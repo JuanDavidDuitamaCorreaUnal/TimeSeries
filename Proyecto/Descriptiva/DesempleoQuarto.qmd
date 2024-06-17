@@ -1,0 +1,543 @@
+---
+title: "Proyecto Series de Tiempo Univariadas"
+format: html
+editor: visual
+lang: es
+---
+
+El siguiente trabajo abarca todas las metodologías vistas en el semestre 2024-1 de Series de Tiempo Univariadas, utilizando la medición de la tasa de desempleo en Colombia; desde enero de 2001 hasta diciembre de 2023.
+
+## Integrantes
+
+-   Ander Cristancho
+-   Anderson Guarín
+-   Juan David Duitama
+
+## Librerías utilizadas
+
+```{r}
+#| messages: FALSE
+#| warning: FALSE
+library(plotly)
+library(forecast)
+library(MASS)
+library(tidyverse)
+library(lubridate)
+library(timetk)
+library(tibble)
+library(zoo)
+library(tsibble)
+library(feasts)
+library(fable)
+library(cowplot)
+library(astsa)
+library(TSstudio)
+library(fabletools)
+library(TSA)
+library(dplyr)
+library(parsnip)
+library(rsample)
+library(modeltime)
+library(tidymodels)
+```
+
+## Importación de datos
+
+```{r}
+setwd("D:/Estadística/Semestres/Semestre 9/Series de Tiempo Univariadas/Datos")
+Data <- read.csv("DesempleoLimpio")[,c(2,4)]
+colnames(Data)<-c("AnioMes","TasaDesempleo")
+```
+
+## Visualización de datos
+
+En un primer vistazo podemos notar el pico presente en el periodo concerniente a la pandemia, antes de este periodo existía una tendencia decreciente, a partir del año 2022 los valores de la tasa de desempleo parecen volver a ser similares a aquellos dados previos a la pandemia.
+
+```{r}
+DesempleoTS <- ts(rev(Data$TasaDesempleo), start = c(2001, 1), end = c(2023, 12), frequency = 12)
+plot_ly( x = time(DesempleoTS), y = DesempleoTS, type = 'scatter', mode = 'lines',color=I("red")) %>%
+  layout(title = 'Tasa de Desempleo en Colombia',
+         xaxis = list(title = 'Mes', rangeslider = list(type = 'date')))
+
+
+```
+
+### Autocorrelación
+
+Un primer gráfico de la autocorrelación, recordemos que no es válido hasta que retiremos la tendencia y la estacionalidad.
+
+```{r}
+acf(DesempleoTS,lag.max = length(DesempleoTS))
+```
+
+## Análisis Descriptivo
+
+En principio la serie aparenta tener un ciclo(estacionalidad) que se repite cada año, es decir, una serie con periodo doce, en la que el mayor pico que se tiene en cada año se encuentra localizado en el mes de enero, exceptuando el 2005 y la pandemia de 2020. En todos los demás años la mayor tasa de desempleo que se reportó ocurrió en enero, y en los meses posteriores fue reduciendo hasta crecer nuevamente finalizando el año. Parece haber una ligera tendencia decreciente desde el año 2001 hasta finales de 2019. El rango de los valores de la tasa de desempleo parece ser constante a simple vista, nuevamente exceptuando la pandemia.
+
+### Estabilización de la Varianza (Tranformación Box-Cox)
+
+A pesar de que el rango de valores de la tasa de desempleo en cada año parece ser constante, es decir, aparenta tener varianza constante, se realizará una transformación de los valores con el fin de evitar problemas futuros; en especial para el periodo posterior al 2019, cuyos valores se vieron afectados por el suceso ya conocido; Covid 19.
+
+```{r}
+Lambda<-BoxCox.lambda(DesempleoTS, method ="loglik", lower = -3, upper = 3)#Encontrando el valor de Lambda
+Lambda
+DesempleoTSBox<-BoxCox(DesempleoTS,lambda = Lambda)#Transformando los datos
+```
+
+```{r}
+MASS::boxcox(lm(DesempleoTS ~ 1),seq(-3, 3, length = 50))
+```
+
+La estimación de Lambda indica que sí es necesario realizar una transformación, además, el intervalo de confianza para este Lambda no incluye el 0.
+
+No hemos retirado la tendencia, solo se han transformado los datos, por lo tanto, no se espera un cambio notorio, a excepción de la reducción del pico de la pandemia, se presenta nuevamente el gráfico de la autocorrelación con la serie transformada.
+
+```{r}
+plot_ly( x = time(DesempleoTSBox), y = DesempleoTSBox, type = 'scatter', mode = 'lines',color=I("red")) %>%
+  layout(title = 'Tasa de Desempleo en Colombia Transformada',
+         xaxis = list(title = 'Mes', rangeslider = list(type = 'date')))
+acf(DesempleoTSBox,lag.max = length(DesempleoTSBox))
+```
+
+### Extracción de la tendencia
+
+#### Estimación mediante un modelo lineal
+
+Se realiza un modelo de regresión lineal simple utilizando como variable regresora el tiempo, y como variable de estudio, la tasa de desempleo mensual previamente transformada. Por la naturaleza de los datos un modelo lineal no es adecuado, ya que la pandemia fue un evento singular no recreable con una recta, una recta sí podría ser adecuada para el periodo previo a la pandemia.
+
+```{r}
+summary(fitLM <- lm(DesempleoTSBox~time(DesempleoTSBox), na.action=NULL))#Creando un modelo de regresión lineal
+plot(DesempleoTSBox, ylab="Tasa de Desempleo transformada",xlab="Mes") 
+abline(fitLM,col = "red")
+
+```
+
+La serie resultante de extraer la tendencia lineal no aparenta ser una serie que oscile sobre un solo valor. Notorio, reiterando nuevamente; en el período de la pandemia.
+
+```{r}
+DesempNoLM=DesempleoTSBox-predict(fitLM)#Eliminando la tendencia
+plot_ly( x = time(DesempNoLM), y = DesempNoLM, type = 'scatter', mode = 'lines',color=I("red")) %>%
+  layout(title = 'Tasa de Desempleo en Colombia con tendencia lineal extraída',
+         xaxis = list(title = 'Mes', rangeslider = list(type = 'date')))
+```
+
+#### Estimación no paramétrica
+
+La estimación no paramétrica permite capturar comportamientos "irregulares", no obstante, reiterando con el periodo de la pandemia, la estimación de la tendencia en este caso requiere que el suavizado sea más sensible. Particularmente se realizó un suavizado local con el 20% de los datos.
+
+```{r}
+indice1=as.Date(as.yearmon(tk_index(DesempleoTSBox)))#Convirtiendo en fecha el indice de DesempleoTSBox, deja como primero de enero cada fecha
+indice1.1=yearmon(as.yearmon(tk_index(DesempleoTSBox)))#Dejando esa fecha solo como año y mes
+
+## Haciendo el objeto tsibble
+df=data.frame(Fecha=indice1,TransDesemp=as.matrix(DesempleoTSBox))
+DesempTibbleTS=as_tsibble(df)
+
+####Primera aproximación del ajuste STL
+
+df%>%timetk::plot_time_series(Fecha, TransDesemp, 
+                   .interactive = TRUE,
+                   .plotly_slider = TRUE)
+
+#Creando una nueva columna con los datos ajustados por una regresión STL de grado 2 y utilizando el 20% de los datos, entre más pequeño, la curva es menos suave
+
+###Ajuste STL moviendo los parámetros
+df%>%mutate(TransDesemp_Mod=smooth_vec(TransDesemp,span = 0.2, degree = 2))%>%
+  ggplot(aes(Fecha, TransDesemp)) +
+    geom_line() +
+    geom_line(aes(y = TransDesemp_Mod), color = "red")
+```
+
+La serie de tiempo resultante de extraer la tendencia por métodos no paramétricos sí parece oscilar alrededor de 0, a comparación de la serie anterior, esta serie es adecuada para seguir con los análisis posteriores.
+
+```{r}
+STLextra<-DesempleoTSBox-smooth_vec(DesempleoTSBox,span = 0.2, degree = 2)
+plot_ly( x = time(STLextra), y = STLextra, type = 'scatter', mode = 'lines',color=I("red")) %>%
+  layout(title = 'Tasa de Desempleo con tendencia STL extraída',
+         xaxis = list(title = 'Mes', rangeslider = list(type = 'date')))
+```
+
+El siguiente código permite realizar la descomposición de la serie de tiempo transformada en todas las partes, tendencia, estacionalidad y error, note que la componente de error sigue teniendo un pico muy alto en los meses en que se desarrolló la pandemia.
+
+```{r}
+tsibbleBoxDesem<-as_tsibble(DesempleoTSBox)#Creando el objeto tsibble de la tasa de Desempleo transformada, note que tiene periodo 1M
+
+tsibbleBoxDesem %>%
+  model(
+    STL(value ~ trend() +
+                   season(window = "periodic"),
+    robust = TRUE)) %>%
+  components() %>%
+  autoplot()
+```
+
+#### Diferencia ordinaria
+
+El método de diferencia ordinaria, además de ser simple, dio un buen resultado puesto que la serie resultante parece oscilar alrededor de 0, el único dato que se pierde es el que corresponde a Enero de 2001.
+
+```{r}
+###Diferenciando con base en el objeto ts
+
+DiferenciaOrd<-diff(DesempleoTSBox)
+plot_ly( x = time(DiferenciaOrd), y = DiferenciaOrd, type = 'scatter', mode = 'lines',color=I("red")) %>%
+  layout(title = 'Tasa de Desempleo sin tendencia(Diferencia Ordinaria, lag=1)',
+         xaxis = list(title = 'Mes', rangeslider = list(type = 'date')))
+#plot(dlAirPass)
+
+```
+
+#### Promedio móvil
+
+Finalmente, con el promedio móvil también se obtuvo una serie con valores oscilantes alrededor de 0, no obstante, utilizando este método se pierden las primeras y últimas 6 observaciones, es decir, Enero, Febrero, Marzo, Abril, Mayo y Junio del 2001, y Julio, Agosto, Septiembre, Octubre, Noviembre, Diciembre del 2023 no tienen estimación.
+
+```{r}
+DescomProm=decompose(DesempleoTSBox)
+plot(DescomProm)
+ExtraProm=DesempleoTSBox-DescomProm$trend
+plot_ly( x = time(ExtraProm), y = ExtraProm, type = 'scatter', mode = 'lines',color=I("red")) %>%
+  layout(title = 'Tasa de Desempleo con tendencia extraída (Promedio móvil)',
+         xaxis = list(title = 'Mes', rangeslider = list(type = 'date')))
+```
+
+#### Comparando las funciones de autocorrelación de las series sin tendencia
+
+```{r}
+acf(DesempleoTS,lag.max = length(DesempleoTS))
+
+par(mfrow = c(2, 2))
+acf(DesempNoLM,lag.max =100,main="Autocorrelación serie sin tendencia lineal")
+acf(STLextra,lag.max =100,main="Autocorrelación serie sin tendencia STL")
+acf(DiferenciaOrd,lag.max =100,main="Autocorrelación serie sin tendencia\npor diferencia ordinaria")
+acf(ExtraProm[7:270],lag.max =100,main="Autocorrelación serie sin tendencia\npor promedio móvil")
+
+```
+
+A partir de ahora los análisis próximos serán realizados en todas las series con tendencia extraída, a excepción de la lineal; esto ya que los resultados en el gráfico de autocorrelación no son buenos.
+
+### Explorando relaciones no lineales
+
+#### Gráficos de retardos
+
+El gráfico de retardos indica que hay una relación lineal con el retardo número 12 en las 3 series con tendencia extraída.
+
+```{r}
+#El gráfico de retardos se realiza con la serie con tendencia extraída
+
+#Tendencia STL extraída
+par(mar = c(3,2,3,2))
+lag1.plot(STLextra, 12,corr=T)
+#Tendencia extraída por diferencia ordinaria
+par(mar = c(3,2,3,2))
+lag1.plot(DiferenciaOrd, 12,corr=T)
+#Tendencia extraída por promedio móvil
+par(mar = c(3,2,3,2))
+lag1.plot(ExtraProm[7:270], 12,corr=T)
+
+
+```
+
+Del gráfico de retardos de la diferencia ordinaria, se seleccionan los retardos 6, 9, 10 y 12.
+
+#### Gráfico de autocorrelación parcial
+
+```{r}
+pacf(DiferenciaOrd, 12)
+```
+
+La autocorrelación parcial indica que los único retardos que no aportan información relevante son el 1, 7 y 8.
+
+### Detección de estacionalidad
+
+Un primer gráfico propuesto para la detección de la estacionalidad de forma visual es el siguiente, recordemos que está siendo aplicado en la serie con la tendencia extraída.
+
+```{r}
+#Tendencia STL extraída
+TSstudio::ts_heatmap(STLextra,title = "Mapa de Calor - Tasa de Desempleo en Colombia(STL)")
+#Tendencia extraída por promedio móvil
+TSstudio::ts_heatmap(ExtraProm,title = "Mapa de Calor - Tasa de Desempleo en Colombia(Promedio móvil)")
+#Tendencia extraída por diferencia ordinaria
+TSstudio::ts_heatmap(DiferenciaOrd,title = "Mapa de Calor - Tasa de Desempleo en Colombia(Diferencia Ordinaria)")
+```
+
+El mapa de calor indica que los valores más altos en la tasa de desempleo fueron reportados en el mes de enero, esto se logra apreciar más en el mapa de calor hecho a partir de la serie cuya tendencia fue extraída por diferencia ordinaria.
+
+En el siguiente gráfico se utilizan las subseries por cada mes, se aprecia más claramente la anterior aseveración, enero es el mes que suele tener las tasas de desempleo más altas, nuevamente se logra evidenciar más en el gráfico realizado con la serie cuya tendencia fue extraída por diferencia ordinaria.
+
+```{r}
+monthplot(STLextra,main="Subseries(STL)")
+monthplot(ExtraProm,main="Subseries(Promedio móvil)")
+monthplot(DiferenciaOrd,main="Subseries(Diferencia Ordinaria)")
+```
+
+Otra alternativa es utilizar los gráficos de cajas, utilizaremos la serie con diferencia ordinaria puesto que ha sido aquella que ha mostrado mejores resultados.
+
+```{r}
+tsibbleBoxDesem <- tsibbleBoxDesem %>%
+  mutate(index = as.Date(index))
+tsibbleBoxDesem<-tsibbleBoxDesem%>%mutate(Diferencia=value-lag(value))
+tsibbleBoxDesem %>%
+  na.omit() %>%
+  plot_seasonal_diagnostics(.date_var = index, .value = Diferencia, .feature_set = c("month.lbl"), .geom = "boxplot")
+
+```
+
+Finalmente, un gráfico con las estimaciones de las densidades.
+
+```{r}
+ggplot(tsibbleBoxDesem %>%na.omit()|>
+    mutate(
+        Mes = str_c("Mes ", as.character(lubridate::month(index)))
+    ), aes(x = Diferencia)) +
+      geom_density(aes(fill = Mes)) +
+      ggtitle("LosPass - Estimación de la densidad vía Kernel por mes") +
+      facet_grid(rows = vars(as.factor(Mes)))
+```
+
+#### Encontrando el periodo de la serie
+
+El periodograma concluye en los tres casos que el periodo es 6, no obstante, se trabaja como 12, puesto que es un múltiplo de 6, además de que ya teníamos el periodo fijo de 12 al estar trabajando con una serie mensual.
+
+```{r}
+#STL
+PeriodgramadTra1=spectrum(as.numeric(STLextra),log='no')
+ubicacion1=which.max(PeriodgramadTra1$spec)
+
+#Promedio móvil
+PeriodgramadTra2=spectrum(as.numeric(ExtraProm[7:270]),log='no')
+ubicacion2=which.max(PeriodgramadTra2$spec)
+
+#Diferencia ordinaria
+PeriodgramadTra3=spectrum(as.numeric(DiferenciaOrd),log='no')
+ubicacion3=which.max(PeriodgramadTra3$spec)
+
+
+sprintf("El valor de la frecuencia donde se máximiza el periodograma para la serie con tendencia STL extraída es: %s",PeriodgramadTra1$freq[ubicacion1])
+
+sprintf("El periodo correspondiente es aproximadamente: %s",1/PeriodgramadTra1$freq[ubicacion1])
+sprintf("El valor de la frecuencia donde se máximiza el periodograma para la serie con tendencia extraída por promedio móvil es: %s",PeriodgramadTra2$freq[ubicacion2])
+
+sprintf("El periodo correspondiente es aproximadamente: %s",1/PeriodgramadTra2$freq[ubicacion2])
+sprintf("El valor de la frecuencia donde se máximiza el periodograma para la serie con tendencia extraída por diferencia ordinaria es: %s",PeriodgramadTra3$freq[ubicacion3])
+
+sprintf("El periodo correspondiente es aproximadamente: %s",1/PeriodgramadTra3$freq[ubicacion3])
+
+```
+
+#### Estimación de la estacionalidad
+
+```{r}
+
+DiferTSibl<-as_tsibble(DiferenciaOrd)
+DiferTSibl
+
+###Explore diferentes valores de K
+Modelo_serie_diff<-DiferTSibl|>model(
+  `Fourier1Desempleo`=ARIMA(value~fourier(K=4)+pdq(0, 0, 0) + PDQ(0, 0, 0))#En este caso se hace con tres componentes de Fourier
+  
+)
+
+real_ajustado1<-DiferTSibl%>%left_join(fitted(Modelo_serie_diff,by=index))#%>%select(-.model) 
+
+plot_ly(x = time(DiferenciaOrd), y = DiferenciaOrd, type = 'scatter', mode = 'lines', color = I("red"), name = "Serie1") %>%
+  add_trace(y = real_ajustado1$.fitted, mode = 'lines', line = list(color = 'blue'), name = "Ajuste Armónico") %>%
+  layout(title = 'Tasa de Desempleo sin tendencia (Diferencia Ordinaria, lag=1)',
+         xaxis = list(title = 'Mes', rangeslider = list(type = 'date')))
+
+#####Ajuste Dummy
+
+ModeloDummy<-DiferTSibl|>model(
+  `DummyAirdiff`=ARIMA(value~season()+pdq(0, 0, 0) + PDQ(0, 0, 0))
+  
+)
+real_ajustado2<-DiferTSibl%>%left_join(fitted(ModeloDummy,by=index))#%>%select(-.model) 
+
+
+plot_ly(x = time(DiferenciaOrd), y = DiferenciaOrd, type = 'scatter', mode = 'lines', color = I("red"), name = "Serie1") %>%
+  add_trace(y = real_ajustado2$.fitted, mode = 'lines', line = list(color = 'blue'), name = "Ajuste Dummy") %>%
+  layout(title = 'Tasa de Desempleo sin tendencia (Diferencia Ordinaria, lag=1)',
+         xaxis = list(title = 'Mes', rangeslider = list(type = 'date')))
+
+#### Varios modelos la mismo tiempo
+
+ajuste_final_models<-DiferTSibl%>%model(
+ `Fourier1Airdiff`=ARIMA(value~fourier(K=1)+pdq(0, 0, 0) + PDQ(0, 0, 0)),#1 componente de Fourier
+ `Fourier2Airdiff`=ARIMA(value~fourier(K=2)+pdq(0, 0, 0) + PDQ(0, 0, 0)),#2 componente de Fourier
+ `Fourier3Airdiff`=ARIMA(value~fourier(K=3)+pdq(0, 0, 0) + PDQ(0, 0, 0)),#3 componente de Fourier
+`DummyAirdiff`=ARIMA(value~season()+pdq(0, 0, 0) + PDQ(0, 0, 0))#Ajuste dummy
+                                        )
+
+glance(ajuste_final_models)
+
+Modelo_serie_diff_models<-DiferTSibl%>%left_join(fitted(ajuste_final_models)|>group_by(.model)%>%
+    pivot_wider(names_from = .model, values_from = .fitted))
+
+plot_ly(x = time(DiferenciaOrd), y = DiferenciaOrd, type = 'scatter', mode = 'lines', color = I("red"), name = "Serie1") %>%
+add_trace(y = Modelo_serie_diff_models$Fourier1Airdiff, mode = 'lines', line = list(color = 'blue'), name = "Fourier1") %>%
+add_trace(y = Modelo_serie_diff_models$Fourier2Airdiff, mode = 'lines', line = list(color = 'green'), name = "Fourier2") %>%
+add_trace(y = Modelo_serie_diff_models$Fourier3Airdiff, mode = 'lines', line = list(color = 'yellow'), name = "Fourier3") %>%
+add_trace(y = Modelo_serie_diff_models$DummyAirdiff, mode = 'lines', line = list(color = 'purple'), name = "Dummy") %>%  
+  layout(title = 'Tasa de Desempleo sin tendencia (Diferencia Ordinaria, lag=1)',
+         xaxis = list(title = 'Mes', rangeslider = list(type = 'date')))
+
+
+```
+
+## Suavizamiento Exponencial
+
+El suavizamiento exponencial es un modelo que contiene 3 parámetros, dos relacionados a la estimación de la componente de tendencia, y el tercero a la componente de estacionalidad.
+
+```{=tex}
+\begin{align*}
+a_t & = \alpha(x_t-s_{t-p}) + (1-\alpha)(a_{t-1}+b_{t-1}) \\
+b_t & = \beta(a_t-a_{t-1}) + (1-\beta)b_{t-1} \\
+s_t & = \gamma(x_t-a_t) + (1-\gamma)s_{t-p}
+\end{align*}
+```
+El siguiente ejemplo realiza un primer suavizamiento exponencial únicamente con la componente de Nivel sobre la tasa de desempleo con los datos ya transformados; es decir, el único parámetro que se utilizará es $\alpha$.
+
+```{r}
+HWAP_inic=stats::HoltWinters(DesempleoTSBox,alpha=NULL,beta=FALSE,gamma=FALSE)
+plot(HWAP_inic)
+HWAP_inic
+```
+
+El resultado es una estimación sobreajustada de la serie, lo que generará pésimas predicciones como se muestra en el siguiente gráfico. Se realizarán predicciones para los siguientes 12 meses, es decir, el comportamiento de la tasa de Desempleo en el año 2024.
+
+```{r}
+plot(forecast::forecast(HWAP_inic,h=12,level =0.95,lambda = 0))
+
+```
+
+El siguiente modelo sí tendrá las tres componentes
+
+```{r}
+HWAP=stats::HoltWinters(DesempleoTSBox,seasonal="additive")
+plot_ly(x = time(DesempleoTSBox[13:276]), y = DesempleoTSBox[13:276], type = 'scatter', mode = 'lines', color = I("red"), name = "Original") %>%
+add_trace(y = HWAP$fitted[,1], mode = 'lines', line = list(color = 'blue'), name = "EWMA") %>%
+  layout(title = 'Suavizamiento Exponencial',
+         xaxis = list(title = 'Mes', rangeslider = list(type = 'date')))
+
+```
+
+```{r}
+ajustados=fitted(HWAP)#Guarda las estimaciones que hace el modelo para cada mes desde enero de 2002 hasta diciembre de 2023.
+plot(ajustados)#Gráfico de las tres componentes, nivel, pendiente y estacionalidad
+tail(ajustados,12)#Estimaciones para el último año(2023)
+cbind(DesempleoTSBox[265:276],ajustados[253:264,])
+HWAP
+```
+
+```{r}
+predictionHWAP_1=forecast::forecast(HWAP,h=12,level =0.95,lambda = -1.3)
+predictionHWAP_1
+plot(predictionHWAP_1)#Gráfico con pronósticos de los próximos 12 meses, hago de una la transformación inversa de BoxCox, recordemos que el Lambda = -1.3
+
+```
+
+Usando objetos tsibble ahora
+
+```{r}
+tsibbleBoxDesem<-as_tsibble(DesempleoTSBox)#Corrigiendo un problema que tenía este objeto tsibble, por eso lo creé de nuevo.
+Ajuste1=tsibbleBoxDesem%>%
+  model(ETS(value~ error("A")+trend("A")+season("A")))
+
+Pronostico1=Ajuste1%>%
+  fabletools::forecast(h=12)
+Pronostico1
+
+Pronostico1%>%autoplot(tsibbleBoxDesem)+geom_line(aes(y=.fitted),col="red",data=augment(Ajuste1))+labs(y=" ",title="Pronóstico u ajustados")+guides(colour="none")
+
+#También puedo hacerlo con los datos originales, lo hago más tarde.
+```
+
+### Suavizamiento exponencial utilizando la librería modeltime
+
+El procedimiento inicia con la creación de un objeto tibble de la serie transformada.
+
+```{r}
+TibDesemBox<-as_tibble(tsibbleBoxDesem)
+TibDesemBox$index<-as.Date(TibDesemBox$index)
+TibDesemBox<-rename(TibDesemBox,Fecha=index,DesemBox=value)
+TibDesemBox<-TibDesemBox%>%mutate(Original=box_cox_inv_vec(DesemBox,lambda = Lambda))
+```
+
+Posteriormente se divide la serie en conjunto de entrenamiento y de prueba.
+
+```{r}
+Particion=timetk::time_series_split(TibDesemBox,date_var=Fecha,assess = 12,cumulative = TRUE)#En este caso, al decir assess=12 indica que las últimas 12 observaciones serán utilizadas como conjunto de prueba
+Particion%>% tk_time_series_cv_plan()%>%
+  plot_time_series_cv_plan(Fecha,DesemBox)
+
+```
+
+Ajustando el modelo
+
+```{r}
+ModeloEWMA<-modeltime::exp_smoothing(
+  error="additive",
+  trend="additive",
+  season="additive"
+)%>%
+  set_engine("ets")%>%
+  fit(DesemBox ~ Fecha,data=training(Particion))
+
+
+modeltime_table(ModeloEWMA) %>%
+  modeltime_calibrate(testing(Particion))%>%
+  modeltime_forecast(
+    new_data = testing(Particion),
+    actual_data = TibDesemBox
+  )%>%
+  plot_modeltime_forecast(.conf_interval_fill = "lightblue")
+```
+
+```{r}
+##Se crea un objeto de pronóstico con los valores sobre el conjunto de prueba.
+PronosticoEWMA<-modeltime_table(ModeloEWMA) %>%
+  modeltime_calibrate(testing(Particion))%>%
+  modeltime_forecast(
+    new_data = testing(Particion),
+    actual_data = TibDesemBox
+  )
+    
+ PronosticoEWMA
+```
+
+```{r}
+####Los mismo que hicimos anteriormente pero ahora creando objetos
+ ## Modeltime
+ model_tbl<-modeltime_table(ModeloEWMA)
+## Calibración 
+  calibration_tbl<-model_tbl%>%
+    modeltime_calibrate(testing(Particion))
+## Pronóstico sobre el conjunto de prueba
+  calibration_tbl%>%
+   modeltime_forecast(
+    new_data = testing(Particion),
+    actual_data = TibDesemBox
+  ) 
+ ###Residuales 
+  residuales_ajuste<-model_tbl%>%
+  modeltime_calibrate(new_data=training(Particion))%>%
+  modeltime_residuals()
+
+residuales_ajuste%>%plot_modeltime_residuals(
+  .type="timeplot",
+  .interactive = TRUE)
+  
+### Precisión de los pronósticos
+  calibration_tbl%>%
+    modeltime_accuracy()
+  
+  ## Re-ajuste y predicción de valores futuros
+re_ajuste<-calibration_tbl%>%
+  modeltime_refit(data=TibDesemBox)
+
+re_ajuste%>%
+  modeltime_forecast(h=12,
+                     actual_data = TibDesemBox
+                     )%>%
+  plot_modeltime_forecast()
+
+
+```

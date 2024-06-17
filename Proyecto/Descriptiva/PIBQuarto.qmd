@@ -1,0 +1,298 @@
+---
+title: "PIBQuarto"
+format: html
+editor: visual
+lang: es
+---
+
+El siguiente trabajo abarca todas las metodologías vistas en el semestre 2024-1 de la asignatura Series de Tiempo Univariadas, utilizando la medición trimestral del PIB en Colombia a precios constantes (calculando el agregado a partir de la suma de las actividades económicas de Colombia), a partir del primer trimestre de 2005, hasta el último trimestre del 2023.
+
+## Integrantes
+
+-   Ander Cristancho
+-   Anderson Guarin
+-   Juan David Duitama
+
+## Librerías utilizadas
+
+```{r}
+#| messages: FALSE
+#| warning: FALSE
+
+library(plotly)
+library(forecast)
+library(MASS)
+library(tidyverse)
+library(lubridate)
+library(timetk)
+library(tibble)
+library(zoo)
+library(tsibble)
+library(feasts)
+library(fable)
+library(cowplot)
+library(astsa)
+library(TSstudio)
+library(fabletools)
+library(TSA)
+library(readxl)
+```
+
+## Importación de datos
+
+```{r}
+
+PIB3 <- read_excel("D:/Estadística/Semestres/Semestre 9/Series de Tiempo Univariadas/Datos/1.4 PIB_Precios constantes grandes ramas de actividades economicas_trimestral_V2.xlsx", range = "AS18:AS93", col_names = FALSE)
+
+```
+
+## Visualización de datos
+
+```{r}
+PIB3TS <- ts(PIB3, start = c(2005, 1), end = c(2023, 4), frequency = 4)
+#Convirtiendo los datos originales en objeto serie de tiempo(ts)
+plot_ly( x = time(PIB3TS), y = PIB3TS, type = 'scatter', mode = 'lines',color=I("red")) %>%
+  layout(title = 'PIB Trimestral en Colombia',
+         xaxis = list(title = 'Trimestre', rangeslider = list(type = 'date')))
+
+```
+
+La conclusión inicial con este primer gráfico es que se observa la tendencia creciente del PIB, se presentó una caída súbita a partir del año 2020, ya es sabido lo que ocurrió en ese periodo. Una vez llegado el tercer trimestre de 2021, el PIB consiguió seguir la tendencia creciente que se tenía desde antes de la pandemia.
+
+## Autocorrelación
+
+A continuación, se presenta un primer gráfico de la autocorrelación, recordemos que éste no es válido, hasta que retiremos la tendencia y la estacionalidad.
+
+```{r}
+acf(PIB3TS,lag.max = length(PIB3TS))
+```
+
+## Análisis descriptivo
+
+Como ya mencionamos anteriormente, el primer componente que se puede identificar en la serie de tiempo es la tendencia creciente del PIB, aparenta haber un ciclo en el que se tienen años con PIB con tendencia a aumentar, luego, se tienen otros años en los que su tendencia disminuye. Se puede observar esto desde 2001 hasta alrededor del segundo trimestre de 2008, luego desciende, hasta empezar a crecer de nuevo, para empezar a decrecer en 2012 y crecer nuevamente en 2013.
+
+### Estabilización de la Varianza (Tranformación Box-Cox)
+
+Primero se recurre a realizar la estabilización de la varianza de la serie, a través de la **Transformación Box-Cox**.
+
+```{r}
+Lambda<-BoxCox.lambda(PIB3TS, method ="loglik", lower = -3, upper = 3)#Encontrando el valor de Lambda
+Lambda
+```
+
+El $\lambda$ resultante es cercano a 1, por lo que no será necesario realizar una transformación sobre los datos.
+
+```{r}
+MASS::boxcox(lm(PIB3TS ~ 1),seq(-3, 3, length = 50))
+```
+
+Con el Boxcox, se confirma que $\lambda$ tiene un valor cercano a 1, pero que abarca el 0 en su intervalo de confianza.
+
+### Extracción de la tendencia
+
+#### Estimación mediante un modelo lineal
+
+A continucación, se realiza un modelo de regresión lineal simple utilizando como variable regresora el tiempo, y como variable de estudio, el PIB trimestral.
+
+```{r}
+summary(fitLM <- lm(PIB3TS~time(PIB3TS), na.action=NULL))#Creando un modelo de regresión lineal
+plot(PIB3TS, ylab="PIB trimestral en Colombia",xlab="Trimestre") 
+abline(fitLM,col = "red")
+
+```
+
+Haciendo una revisión meramente visual, el modelo lineal resultante logra capturar el comportamiento creciente del PIB trimestral, ignorando el suceso ocurrido en 2020 claramente. La serie resultante de extraer esta tendencia lineal es la siguiente.
+
+```{r}
+PIB3NoLM=PIB3TS-predict(fitLM)#Eliminando la tendencia
+plot_ly( x = time(PIB3NoLM), y = PIB3NoLM, type = 'scatter', mode = 'lines',color=I("red")) %>%
+  layout(title = 'PIB trimestral en Colombia con tendencia lineal extraída',
+         xaxis = list(title = 'Trimestre', rangeslider = list(type = 'date')))
+```
+
+Al realizar la extracción respectiva, la serie resultante no es adecuada para continuar con el análisis, puesto que el valle resultante de la extracción en años de pandemia perjudica los próximos procedimientos. Lo cual provocaría que al realizar predicciones bajo el modelo lineal, éstas sean subajustadas.
+
+#### Estimación no paramétrica
+
+```{r}
+indice1=as.Date(as.yearmon(tk_index(PIB3TS)))#Convirtiendo en fecha el indice de DesempleoTSBox, deja como primero de enero cada fecha
+indice1.1=yearmon(as.yearmon(tk_index(PIB3TS)))#Dejando esa fecha solo como año y mes
+
+## Haciendo el objeto tsibble
+df=data.frame(Fecha=indice1,PIB=as.matrix(PIB3TS))
+colnames(df)[2]<-"PIB"
+PIB3TSibble=as_tsibble(df)
+PIB3TSibble
+
+pib3TSibble <- tsibble(
+  periodo = seq(as.Date("2005-01-01"), as.Date("2023-12-01"), by = "3 months"),
+  valor = PIB3
+)
+
+####Primera aproximación del ajuste STL
+
+df%>%timetk::plot_time_series(Fecha, PIB, 
+                   .interactive = TRUE,
+                   .plotly_slider = TRUE)
+
+#Creando una nueva columna con los datos ajustados por una regresión STL de grado 2 y utilizando el 20% de los datos, entre más pequeño, la curva es menos suave
+
+###Ajuste STL moviendo los parámetros
+df%>%mutate(PIBmod=smooth_vec(PIB,span = 0.1, degree = 2))%>%
+  ggplot(aes(Fecha, PIB)) +
+    geom_line() +
+    geom_line(aes(y = PIBmod), color = "red")
+```
+
+En este caso, la estimación no paramétrica gráficamente logra captar el comportamiento de la serie, incluyendo el periodo de pandemia.
+
+Ahoa bien, vamos a ver una serie de tiempo con tendencia estimada por métodos no paramétricos extraída, con el fin de observar si la estimación no paramétrica describe mejor el comportamiento del PIB trimestral.
+
+```{r}
+STLextra<-PIB3TS-smooth_vec(PIB3TS,span = 0.1, degree = 2)
+plot_ly( x = time(STLextra), y = STLextra, type = 'scatter', mode = 'lines',color=I("red")) %>%
+  layout(title = 'PIB Trimestral con tendencia STL extraída',
+         xaxis = list(title = 'Trimestre', rangeslider = list(type = 'date')))
+```
+
+Note que la componente de error sigue teniendo un pico muy bajo en los meses en que ocurrió la pandemia. Sin embargo, si no tuviésemos en cuenta el periodo de pandemia, el modelo no paramétrico tiene componente de error muy bajos en años anteriores, lo cual es un buen indicador.
+
+```{r}
+tsibblePIB<-as_tsibble(PIB3TS)#Creando el objeto tsibble del PIB
+tsibblePIB
+
+tsibblePIB %>%
+  model(
+    STL(value ~ trend() +
+                   season(window = "periodic"),
+    robust = TRUE)) %>%
+  components() %>%
+  autoplot()
+```
+
+Según el gráfico anterior, como el PIB está indicando que no está presentando estacionalidad, de todos modos, el gráfico trata de modelar una pseudo-estacionalidad. Asimismo, la componente de error reporta valores bajos, a excepción del periodo de pandemia.
+
+#### Diferencia ordinaria
+
+```{r}
+DiferenciaOrd<-diff(PIB3TS)
+plot_ly( x = time(DiferenciaOrd), y = DiferenciaOrd, type = 'scatter', mode = 'lines',color=I("red")) %>%
+  layout(title = 'PIB sin tendencia(Diferencia Ordinaria, lag=1)',
+         xaxis = list(title = 'Trimestre', rangeslider = list(type = 'date')))
+```
+
+Las conclusiones al extraer la tendencia, mediante diferencia ordinaria,
+
+#### Promedio móvil
+
+```{r}
+PIBcomProm=decompose(PIB3TS)
+plot(PIBcomProm)
+ExtraProm=PIB3TS-PIBcomProm$trend
+plot_ly( x = time(ExtraProm), y = ExtraProm, type = 'scatter', mode = 'lines',color=I("red")) %>%
+  layout(title = 'PIB con tendencia extraída (Promedio móvil)',
+         xaxis = list(title = 'Trimestre', rangeslider = list(type = 'date')))
+```
+
+#### Comparando las funciones de autocorrelación de las series sin tendencia
+
+```{r}
+acf(PIB3TS,lag.max = length(PIB3TS))
+
+par(mfrow = c(2, 2))
+acf(PIB3NoLM,lag.max =length(PIB3NoLM),main="Autocorrelación serie sin tendencia lineal")
+acf(STLextra,lag.max =length(STLextra),main="Autocorrelación serie sin tendencia STL")
+acf(DiferenciaOrd,lag.max =length(DiferenciaOrd),main="Autocorrelación serie sin tendencia\npor diferencia ordinaria")
+acf(ExtraProm[3:74],lag.max =length(ExtraProm[3:74]),main="Autocorrelación serie sin tendencia\npor promedio móvil")
+```
+
+### Explorando relaciones no lineales
+
+#### Gráficos de retardos
+
+El gráfico de retardos indica que hay una relación lineal con el retardo número 4 en las 3 series con tendencia extraída.
+
+```{r}
+#El gráfico de retardos se realiza con la serie con tendencia extraída
+
+#Tendencia STL extraída
+par(mar = c(3,2,3,2))
+lag1.plot(STLextra, 4,corr=T)
+#Tendencia extraída por diferencia ordinaria
+par(mar = c(3,2,3,2))
+lag1.plot(DiferenciaOrd, 4,corr=T)
+#Tendencia extraída por promedio móvil
+par(mar = c(3,2,3,2))
+lag1.plot(ExtraProm[3:74], 4,corr=T)
+```
+
+### Detección de estacionalidad
+
+Un primer gráfico propuesto para la detección de la estacionalidad de forma visual es el siguiente, recordemos que está siendo aplicado en la serie con la tendencia extraída.
+
+```{r}
+#Tendencia STL extraída
+TSstudio::ts_heatmap(STLextra,title = "Mapa de Calor - PIB en Colombia (STL)")
+#Tendencia extraída por promedio móvil
+TSstudio::ts_heatmap(ExtraProm,title = "Mapa de Calor - PIB en Colombia(Promedio móvil)")
+#Tendencia extraída por diferencia ordinaria
+TSstudio::ts_heatmap(DiferenciaOrd,title = "Mapa de Calor - PIB en Colombia(Diferencia Ordinaria)")
+```
+
+```{r}
+monthplot(STLextra,main="Subseries(STL)")
+monthplot(ExtraProm,main="Subseries(Promedio móvil)")
+monthplot(DiferenciaOrd,main="Subseries(Diferencia Ordinaria)")
+```
+
+Otra alternativa es utilizar los gráficos de cajas
+
+```{r}
+tsibblePIB <- tsibblePIB %>%
+  mutate(index = as.Date(index))
+tsibblePIB<-tsibblePIB%>%mutate(Diferencia=value-lag(value))
+tsibblePIB %>%
+  na.omit() %>%
+  plot_seasonal_diagnostics(.date_var = index, .value = Diferencia, .feature_set = c("quarter"), .geom = "boxplot")
+```
+
+Finalmente, un gráfico con las estimaciones de las densidades.
+
+```{r}
+ggplot(tsibblePIB %>%na.omit()|>
+    mutate(
+        Trimestre = str_c("Trimestre ", as.character(lubridate::quarter(index)))
+    ), aes(x = Diferencia)) +
+      geom_density(aes(fill = Trimestre)) +
+      ggtitle("LosPass - Estimación de la densidad vía Kernel por trimestre") +
+      facet_grid(rows = vars(as.factor(Trimestre)))
+```
+
+#### Encontrando el periodo de la serie
+
+```{r}
+#STL
+PeriodgramadTra1=spectrum(as.numeric(STLextra),log='no')
+ubicacion1=which.max(PeriodgramadTra1$spec)
+
+#Promedio móvil
+PeriodgramadTra2=spectrum(as.numeric(ExtraProm[3:74]),log='no')
+ubicacion2=which.max(PeriodgramadTra2$spec)
+
+#Diferencia ordinaria
+PeriodgramadTra3=spectrum(as.numeric(DiferenciaOrd),log='no')
+ubicacion3=which.max(PeriodgramadTra3$spec)
+
+
+sprintf("El valor de la frecuencia donde se máximiza el periodograma para la serie con tendencia STL extraída es: %s",PeriodgramadTra1$freq[ubicacion1])
+
+sprintf("El periodo correspondiente es aproximadamente: %s",1/PeriodgramadTra1$freq[ubicacion1])
+sprintf("El valor de la frecuencia donde se máximiza el periodograma para la serie con tendencia extraída por promedio móvil es: %s",PeriodgramadTra2$freq[ubicacion2])
+
+sprintf("El periodo correspondiente es aproximadamente: %s",1/PeriodgramadTra2$freq[ubicacion2])
+sprintf("El valor de la frecuencia donde se máximiza el periodograma para la serie con tendencia extraída por diferencia ordinaria es: %s",PeriodgramadTra3$freq[ubicacion3])
+
+sprintf("El periodo correspondiente es aproximadamente: %s",1/PeriodgramadTra3$freq[ubicacion3])
+```
+
+De acuerdo a la información reportada en el gráfico de periodograma, no es necesario modelar la estacionalidad.
