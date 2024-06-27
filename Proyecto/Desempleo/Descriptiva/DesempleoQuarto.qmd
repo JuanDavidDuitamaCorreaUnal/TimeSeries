@@ -462,10 +462,10 @@ plot(predictionHWAP_1)#Gráfico con pronósticos de los próximos 12 meses, hago
 
 ```
 
-La raíz del error cuadrático medio es 
+El error cuadrático medio es 
 
 ```{r}
-sqrt(mean((Test-predictionHWAP_1$mean)^2))
+mean((Test-predictionHWAP_1$mean)^2)
 ```
 
 ```{r}
@@ -495,7 +495,7 @@ Pronostico1%>%autoplot(tsibbleBoxDesemTrain)+geom_line(aes(y=.fitted),col="red",
 Raíz de error cuadrático medio
 
 ```{r}
-sqrt(mean((Test-Pronostico1$.mean)^2))
+mean((Test-Pronostico1$.mean)^2)
 ```
 
 ### Suavizamiento exponencial utilizando la librería modeltime
