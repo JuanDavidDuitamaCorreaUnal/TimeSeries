@@ -9,9 +9,9 @@ El siguiente trabajo abarca todas las metodologías vistas en el semestre 2024-1
 
 ## Integrantes
 
--   Ander Cristancho
--   Anderson Guarín
--   Juan David Duitama
+-   Ander Steven Cristancho Sánchez
+-   John Anderson Guarín López
+-   Juan David Duitama Correa
 
 ## Librerías utilizadas
 
@@ -214,7 +214,7 @@ acf(ExtraProm[7:270],lag.max =100,main="Autocorrelación serie sin tendencia\npo
 
 A partir de ahora los análisis próximos serán realizados en todas las series con tendencia extraída, a excepción de la lineal; esto ya que los resultados en el gráfico de autocorrelación no son buenos.
 
-### Explorando relaciones no lineales
+### Explorando relaciones lineales
 
 #### Gráficos de retardos
 
@@ -246,7 +246,7 @@ pacf(DiferenciaOrd, 12)
 
 La autocorrelación parcial indica que los único retardos que no aportan información relevante son el 1, 7 y 8.
 
-### Detección de estacionalidad
+### Extracción de estacionalidad
 
 Un primer gráfico propuesto para la detección de la estacionalidad de forma visual es el siguiente, recordemos que está siendo aplicado en la serie con la tendencia extraída.
 
@@ -357,12 +357,13 @@ plot_ly(x = time(DiferenciaOrd), y = DiferenciaOrd, type = 'scatter', mode = 'li
   layout(title = 'Tasa de Desempleo sin tendencia (Diferencia Ordinaria, lag=1)',
          xaxis = list(title = 'Mes', rangeslider = list(type = 'date')))
 
-#### Varios modelos la mismo tiempo
+#### Varios modelos al mismo tiempo
 
 ajuste_final_models<-DiferTSibl%>%model(
  `Fourier1Airdiff`=ARIMA(value~fourier(K=1)+pdq(0, 0, 0) + PDQ(0, 0, 0)),#1 componente de Fourier
  `Fourier2Airdiff`=ARIMA(value~fourier(K=2)+pdq(0, 0, 0) + PDQ(0, 0, 0)),#2 componente de Fourier
  `Fourier3Airdiff`=ARIMA(value~fourier(K=3)+pdq(0, 0, 0) + PDQ(0, 0, 0)),#3 componente de Fourier
+  `Fourier4Airdiff`=ARIMA(value~fourier(K=4)+pdq(0, 0, 0) + PDQ(0, 0, 0)),#4 componente de Fourier
 `DummyAirdiff`=ARIMA(value~season()+pdq(0, 0, 0) + PDQ(0, 0, 0))#Ajuste dummy
                                         )
 
@@ -371,15 +372,38 @@ glance(ajuste_final_models)
 Modelo_serie_diff_models<-DiferTSibl%>%left_join(fitted(ajuste_final_models)|>group_by(.model)%>%
     pivot_wider(names_from = .model, values_from = .fitted))
 
-plot_ly(x = time(DiferenciaOrd), y = DiferenciaOrd, type = 'scatter', mode = 'lines', color = I("red"), name = "Serie1") %>%
+plot_ly(x = time(DiferenciaOrd), y = DiferenciaOrd, type = 'scatter', mode = 'lines', color = I("red"), name = "SerieDifOrd") %>%
 add_trace(y = Modelo_serie_diff_models$Fourier1Airdiff, mode = 'lines', line = list(color = 'blue'), name = "Fourier1") %>%
 add_trace(y = Modelo_serie_diff_models$Fourier2Airdiff, mode = 'lines', line = list(color = 'green'), name = "Fourier2") %>%
 add_trace(y = Modelo_serie_diff_models$Fourier3Airdiff, mode = 'lines', line = list(color = 'yellow'), name = "Fourier3") %>%
+add_trace(y = Modelo_serie_diff_models$Fourier4Airdiff, mode = 'lines', line = list(color = '#00CD66'), name = "Fourier4") %>%
 add_trace(y = Modelo_serie_diff_models$DummyAirdiff, mode = 'lines', line = list(color = 'purple'), name = "Dummy") %>%  
   layout(title = 'Tasa de Desempleo sin tendencia (Diferencia Ordinaria, lag=1)',
          xaxis = list(title = 'Mes', rangeslider = list(type = 'date')))
 
 
+```
+
+#### Extracción
+
+```{r}
+plot_ly(x = time(DiferenciaOrd), y = DiferenciaOrd, type = 'scatter', mode = 'lines', color = I("red"), name = "SerieDifOrd") %>%
+add_trace(y = DiferenciaOrd-Modelo_serie_diff_models$Fourier1Airdiff, mode = 'lines', line = list(color = 'blue'), name = "Fourier1") %>%
+add_trace(y = DiferenciaOrd-Modelo_serie_diff_models$Fourier2Airdiff, mode = 'lines', line = list(color = 'green'), name = "Fourier2") %>%
+add_trace(y = DiferenciaOrd-Modelo_serie_diff_models$Fourier3Airdiff, mode = 'lines', line = list(color = 'yellow'), name = "Fourier3") %>%
+add_trace(y = DiferenciaOrd-Modelo_serie_diff_models$Fourier4Airdiff, mode = 'lines', line = list(color = '#00CD66'), name = "Fourier4") %>%
+add_trace(y = DiferenciaOrd-Modelo_serie_diff_models$DummyAirdiff, mode = 'lines', line = list(color = 'purple'), name = "Dummy") %>%  
+  layout(title = 'Tasa de Desempleo sin tendencia y estacionalidad (Diferencia Ordinaria, lag=1)',
+         xaxis = list(title = 'Mes', rangeslider = list(type = 'date')))
+
+```
+
+```{r}
+par(mfrow = c(2, 2))
+acf(DiferenciaOrd-Modelo_serie_diff_models$Fourier2Airdiff,lag.max =100,main="Autocorrelación serie sin componentes\n(F2)")
+acf(DiferenciaOrd-Modelo_serie_diff_models$Fourier3Airdiff,lag.max =100,main="Autocorrelación serie sin componentes\n(F3)")
+acf(DiferenciaOrd-Modelo_serie_diff_models$Fourier4Airdiff,lag.max =100,main="Autocorrelación serie sin componentes\n(F4)")
+acf( DiferenciaOrd-Modelo_serie_diff_models$DummyAirdiff,lag.max =100,main="Autocorrelación serie sin componentes\n(Dummy)")
 ```
 
 ## Suavizamiento Exponencial
@@ -408,11 +432,13 @@ plot(forecast::forecast(HWAP_inic,h=12,level =0.95,lambda = 0))
 
 ```
 
-El siguiente modelo sí tendrá las tres componentes
+El siguiente modelo sí tendrá las tres componentes, por lo tanto, para evaluar la capacidad predictiva del modelo, utilizando la predicción a un paso, emplearemos el 80% de la serie como conjunto de entrenamiento y el 20% restante como prueba. Es decir, el periodo de entrenamiento corresponde a los primeros 221 meses, es decir, de enero de 2001 hasta mayo de 2019, por otro lado, el periodo de prueba corresponde a junio de 2019 hasta diciembre de 2023. Recordemos que trabajaremos la serie transformada mediante la transformación de Box-Cox.
 
 ```{r}
-HWAP=stats::HoltWinters(DesempleoTSBox,seasonal="additive")
-plot_ly(x = time(DesempleoTSBox[13:276]), y = DesempleoTSBox[13:276], type = 'scatter', mode = 'lines', color = I("red"), name = "Original") %>%
+Train=ts(DesempleoTSBox[1:221], start = c(2001, 1),frequency = 12)
+Test=ts(DesempleoTS[222:276],start=c(2019,6),frequency = 12)
+HWAP=stats::HoltWinters(Train,seasonal="additive")
+plot_ly(x = time(DesempleoTSBox[13:221]), y = DesempleoTSBox[13:221], type = 'scatter', mode = 'lines', color = I("red"), name = "Original") %>%
 add_trace(y = HWAP$fitted[,1], mode = 'lines', line = list(color = 'blue'), name = "EWMA") %>%
   layout(title = 'Suavizamiento Exponencial',
          xaxis = list(title = 'Mes', rangeslider = list(type = 'date')))
@@ -420,34 +446,56 @@ add_trace(y = HWAP$fitted[,1], mode = 'lines', line = list(color = 'blue'), name
 ```
 
 ```{r}
-ajustados=fitted(HWAP)#Guarda las estimaciones que hace el modelo para cada mes desde enero de 2002 hasta diciembre de 2023.
+ajustados=fitted(HWAP)#Guarda las estimaciones que hace el modelo para cada mes desde enero de 2002 hasta mayo de 2019
 plot(ajustados)#Gráfico de las tres componentes, nivel, pendiente y estacionalidad
-tail(ajustados,12)#Estimaciones para el último año(2023)
-cbind(DesempleoTSBox[265:276],ajustados[253:264,])
 HWAP
 ```
 
+La estimación del parámetro de Nivel alpha es 0.3114955, de Pendiente beta 0.02446716 y de estacionalidad gamma 0.4501506.
+
+Por último evaluaremos la capacidad predictiva del modelo haciendo las 55 predicciones para el periodo correspondiente a prueba. Junio de 2019 hasta diciembre de 2023. Indicamos también el Lambda correspondiente para obtener las predicciones en la escala original.
+
 ```{r}
-predictionHWAP_1=forecast::forecast(HWAP,h=12,level =0.95,lambda = -1.3)
+predictionHWAP_1=forecast::forecast(HWAP,h=55,level =0.95,lambda = -1.3)
 predictionHWAP_1
 plot(predictionHWAP_1)#Gráfico con pronósticos de los próximos 12 meses, hago de una la transformación inversa de BoxCox, recordemos que el Lambda = -1.3
 
 ```
 
+La raíz del error cuadrático medio es 
+
+```{r}
+sqrt(mean((Test-predictionHWAP_1$mean)^2))
+```
+
+```{r}
+plot_ly(x = time(Test), y = Test, type = 'scatter', mode = 'lines', color = I("red"), name = "TasaDesempleo") %>%
+  add_trace(y = predictionHWAP_1$mean, mode = 'lines', line = list(color = 'blue'), name = "Predicciones") %>%
+  layout(title = 'Tasa de Desempleo vs Predicciones (Junio 2019-Diciembre 2023)',
+         xaxis = list(title = 'Mes', rangeslider = list(type = 'date')))
+```
+
 Usando objetos tsibble ahora
 
 ```{r}
-tsibbleBoxDesem<-as_tsibble(DesempleoTSBox)#Corrigiendo un problema que tenía este objeto tsibble, por eso lo creé de nuevo.
-Ajuste1=tsibbleBoxDesem%>%
+TrainOriginal=ts(DesempleoTS[1:221], start = c(2001, 1),frequency = 12)
+tsibbleBoxDesemTrain<-as_tsibble(TrainOriginal)#Corrigiendo un problema que tenía este objeto tsibble, por eso lo creé de nuevo.
+Ajuste1=tsibbleBoxDesemTrain%>%
   model(ETS(value~ error("A")+trend("A")+season("A")))
 
 Pronostico1=Ajuste1%>%
-  fabletools::forecast(h=12)
+  fabletools::forecast(h=55)
 Pronostico1
 
-Pronostico1%>%autoplot(tsibbleBoxDesem)+geom_line(aes(y=.fitted),col="red",data=augment(Ajuste1))+labs(y=" ",title="Pronóstico u ajustados")+guides(colour="none")
+Pronostico1%>%autoplot(tsibbleBoxDesemTrain)+geom_line(aes(y=.fitted),col="red",data=augment(Ajuste1))+labs(y=" ",title="Pronóstico u ajustados")+guides(colour="none")
 
 #También puedo hacerlo con los datos originales, lo hago más tarde.
+```
+
+Raíz de error cuadrático medio
+
+```{r}
+sqrt(mean((Test-Pronostico1$.mean)^2))
 ```
 
 ### Suavizamiento exponencial utilizando la librería modeltime
