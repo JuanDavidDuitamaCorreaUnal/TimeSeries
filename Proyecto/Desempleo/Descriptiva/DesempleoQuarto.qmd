@@ -492,7 +492,7 @@ Pronostico1%>%autoplot(tsibbleBoxDesemTrain)+geom_line(aes(y=.fitted),col="red",
 #También puedo hacerlo con los datos originales, lo hago más tarde.
 ```
 
-Raíz de error cuadrático medio
+Error cuadrático medio
 
 ```{r}
 mean((Test-Pronostico1$.mean)^2)
