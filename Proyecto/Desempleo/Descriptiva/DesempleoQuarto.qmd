@@ -462,7 +462,7 @@ plot(predictionHWAP_1)#Gráfico con pronósticos de los próximos 12 meses, hago
 
 ```
 
-El error cuadrático medio es 
+El error cuadrático medio es
 
 ```{r}
 mean((Test-predictionHWAP_1$mean)^2)
