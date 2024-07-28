@@ -48,9 +48,11 @@ library(readxl)
 #setwd("D:/Estadística/Semestres/Semestre 9/Series de Tiempo Univariadas/Datos")
 #Data <- read.csv("DesempleoLimpio")[,c(2,4)]
 #colnames(Data)<-c("AnioMes","TasaDesempleo")
-setwd("C:/Users/EQUIPO/OneDrive/Documentos/GitHub/TimeSeries/Proyecto/Desempleo")
-Data <- read_excel("Desempleo.xlsx", skip = 5, n_max = 276)
-Data <- subset(Data, select = -`Tasa de ocupación (%)`)
+#setwd("C:/Users/EQUIPO/OneDrive/Documentos/GitHub/TimeSeries/Proyecto/Desempleo")#Ander
+#Data <- read_excel("Desempleo.xlsx", skip = 5, n_max = 276)
+#Data <- subset(Data, select = -`Tasa de ocupación (%)`)
+setwd("D:/Estadística/Semestres/Semestre 9/Series de Tiempo Univariadas/Datos")
+Data <- read.csv("DesempleoLimpio")[,c(2,4)]
 colnames(Data)<-c("AnioMes","TasaDesempleo")
 ```
 
@@ -494,6 +496,7 @@ ntrain=trunc(length(DesempleoTS)*0.80)+1 ##% del datos en el conjunto de entrena
 ntrain
 time(DesempleoTS)
 time(DesempleoTS)[ntrain]###Me entrega la ultima fecha de la posición ntrain
+#Partiendo la serie en entrenamiento y test
 train=window(DesempleoTS,end=time(DesempleoTS)[ntrain])
 test=window(DesempleoTS,start=time(DesempleoTS)[ntrain]+1/12)##1/12 porque es la fracción que corresponde a un mes
 length(train)
@@ -521,8 +524,7 @@ colnames(suav_inputs)<-c("alpha","beta","gamma")
 suav_inputs_tbl=tibble::as_tibble(suav_inputs)
 grilla_suav=expand.grid(alpha=suav_inputs_tbl$alpha,beta=suav_inputs_tbl$beta,gamma=suav_inputs_tbl$gamma) ##Grilla de Valores
 ####Se crean las ventanas de rolling y se obtiene los h-pronósticos para cada ventana(hay ntest posibles ventanas)
-for(i in 1:(ntest))
-{
+for(i in 1:(ntest)){
   x=window(DesempleoTS,end=time(DesempleoTS)[ntrain]+(i-1)/12)
   print(length(x))
   refit=stats::HoltWinters(x,seasonal="additive",alpha=HWAP_train$alpha,beta=HWAP_train$beta,gamma=HWAP_train$gamma)
@@ -577,11 +579,12 @@ tsibbleDesemTrain<-as_tsibble(TrainOriginal)#Corrigiendo un problema que tenía 
 Ajuste1=tsibbleDesemTrain%>%
   model(ETS(value~ error("A")+trend("A")+season("A")))
 
-Pronostico1=Ajuste1%>%
-  fabletools::forecast(h=55)
-Pronostico1
+#Esto toca modificarlo para ponerle el Rolling
+#Pronostico1=Ajuste1%>%
+#  fabletools::forecast(h=55)
+#Pronostico1
 
-Pronostico1%>%autoplot(tsibbleDesemTrain)+geom_line(aes(y=.fitted),col="red",data=augment(Ajuste1))+labs(y=" ",title="Pronóstico u ajustados")+guides(colour="none")
+#Pronostico1%>%autoplot(tsibbleDesemTrain)+geom_line(aes(y=.fitted),col="red",data=augment(Ajuste1))+labs(y=" ",title="Pronóstico u ajustados")+guides(colour="none")
 
 #También puedo hacerlo con los datos originales, lo hago más tarde.
 ```
