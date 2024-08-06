@@ -36,12 +36,13 @@ library(TSstudio)
 library(fabletools)
 library(TSA)
 library(readxl)
+library(modeltime)
 ```
 
 ## Importación de datos
 
 ```{r}
-PIB3 <- read_excel("C:/Users/ander/OneDrive - Universidad Nacional de Colombia/Documentos/(2024-01) Octavo Semestre/Series de Tiempo Univariadas/Proyecto/1.4 PIB_Precios constantes grandes ramas de actividades economicas_trimestral_V2.xlsx", range = "AS18:AS93", col_names = FALSE)
+PIB3 <- read_excel("C:/Users/ander/OneDrive - Universidad Nacional de Colombia/Documentos/(2024-01) Octavo Semestre/Series de Tiempo Univariadas/Proyecto/1. Bases de Datos/PIB.xlsx", range = "AS18:AS93", col_names = FALSE)
 ```
 
 ## Visualización de datos
@@ -294,3 +295,133 @@ sprintf("El periodo correspondiente es aproximadamente: %s",1/PeriodgramadTra3$f
 ```
 
 De acuerdo a la información reportada en el gráfico de periodograma, no es necesario modelar la estacionalidad.
+
+## Suavizamiento Exponencial
+
+El suavizamiento exponencial es un modelo que contiene 3 parámetros, dos relacionados a la estimación de la componente de tendencia, y el tercero a la componente de estacionalidad. Teniendo en cuenta que para este conjunto de datos no se requiere modelar la estacionalidad, solo se tendrán en cuenta los parámetros correspondientes a la compente de tendencia.
+
+```{=tex}
+\begin{align*}
+a_t & = \alpha(x_t-s_{t-p}) + (1-\alpha)(a_{t-1}+b_{t-1}) \\
+b_t & = \beta(a_t-a_{t-1}) + (1-\beta)b_{t-1} \\
+\end{align*}
+```
+El siguiente modelo se manejará con los datos originales, por lo tanto, para evaluar la capacidad predictiva del modelo, utilizando la predicción a un paso, emplearemos el 80% de la serie como conjunto de entrenamiento y el 20% restante como prueba. Es decir, el periodo de entrenamiento corresponde a los primeros 61 trimestres, es decir, de enero de 2005 hasta marzo de 2020, por otro lado, el periodo de prueba corresponde a abril de 2020 hasta diciembre de 2023.
+
+```{r}
+Train=ts(PIB3TS[1:61], start = c(2005, 1),frequency = 4) 
+Test=ts(PIB3TS[62:76],start=c(2020,2),frequency = 4) 
+HWAP=stats::HoltWinters(Train,seasonal=NULL) 
+plot_ly(x = time(PIB3TS[5:61]), y = PIB3TS[5:61], type = 'scatter', mode = 'lines', color = I("red"), name = "Original") %>% add_trace(y = HWAP$fitted[,1], mode = 'lines', line = list(color = 'blue'), name = "EWMA") %>%   layout(title = 'Suavizamiento Exponencial',xaxis = list(title = 'Trimestre', rangeslider = list(type = 'date'))) 
+```
+
+```{r}
+ajustados=fitted(HWAP)#Guarda las estimaciones que hace el modelo para cada trimestre desde enero de 2004 hasta marzo de 2020 
+plot(ajustados)#Gráfico de las tres componentes, nivel, pendiente y estacionalidad 
+HWAP
+```
+
+La estimación del parámetro de Nivel alpha es 0.8704311, de Pendiente beta 0.08945198 y de estacionalidad gamma 1.
+
+Por último evaluaremos la capacidad predictiva del modelo haciendo las 15 predicciones para el periodo correspondiente a prueba. Abril de 2020 hasta diciembre de 2023.
+
+```{r}
+predictionHWAP_1=forecast::forecast(HWAP,h=15) 
+predictionHWAP_1 
+plot(predictionHWAP_1)
+```
+
+El error cuadrático medio es
+
+```{r}
+mean((Test-predictionHWAP_1$mean)^2)
+```
+
+Recordemos que el error cuadrático medio es alto debido a que los datos se encuentran en la escala original.
+
+```{r}
+plot_ly(x = time(Test), y = Test, type = 'scatter', mode = 'lines', color = I("red"), name = "PIB") %>%   add_trace(y = predictionHWAP_1$mean, mode = 'lines', line = list(color = 'blue'), name = "Predicciones") %>%   layout(title = 'PIB vs Predicciones (Abril 2020-Diciembre 2023)',xaxis = list(title = 'Trimestre', rangeslider = list(type = 'date')))
+```
+
+Usando objetos tsibble ahora
+
+```{r}
+TrainOriginal=ts(PIB3TS[1:61], start = c(2005, 1),frequency = 4) 
+tsibbleBoxPIBTrain<-as_tsibble(TrainOriginal)
+Ajuste1=tsibbleBoxPIBTrain%>%   
+  model(ETS(value~ error("A")+trend("A")+season("A")))  
+Pronostico1=Ajuste1 %>%   
+  fabletools::forecast(h=15) 
+Pronostico1  
+Pronostico1%>%autoplot(tsibbleBoxPIBTrain)+geom_line(aes(y=.fitted),col="red",data=augment(Ajuste1))+labs(y=" ",title="Pronóstico u ajustados")+guides(colour="none")
+```
+
+Raíz de error cuadrático medio
+
+```{r}
+mean((Test-Pronostico1$.mean)^2)
+```
+
+### Suavizamiento exponencial utilizando la librería modeltime
+
+El procedimiento inicia con la creación de un objeto tibble de la serie transformada.
+
+```{r}
+TibPIB<-as_tibble(PIB3TSibble) 
+TibPIB$Fecha<-as.Date(TibPIB$Fecha) 
+```
+
+Posteriormente se divide la serie en conjunto de entrenamiento y de prueba.
+
+```{r}
+Particion=timetk::time_series_split(TibPIB,date_var=Fecha,assess = 4,cumulative = TRUE)#En este caso, al decir assess=4 indica que las últimas 4 observaciones serán utilizadas como conjunto de prueba 
+Particion%>% 
+  tk_time_series_cv_plan()%>%   
+  plot_time_series_cv_plan(Fecha,PIB) 
+```
+
+Ajustando el modelo
+
+```{r}
+#ModeloEWMA<-modeltime::exp_smoothing(error="additive",trend="additive",season=NULL )%>%
+  #set_engine("ets")%>%
+  #fit(PIB ~ Fecha,data=training(Particion))   
+#modeltime_table(ModeloEWMA) %>%   
+  #modeltime_calibrate(testing(Particion))%>%   
+  #modeltime_forecast(new_data = testing(Particion), actual_data = TibPIB)%>%   
+  #plot_modeltime_forecast(.conf_interval_fill = "lightblue")
+```
+
+```{r}
+##Se crea un objeto de pronóstico con los valores sobre el conjunto de prueba. 
+#PronosticoEWMA<-modeltime_table(ModeloEWMA) %>%
+  #modeltime_calibrate(testing(Particion))%>%
+  #modeltime_forecast(new_data = testing(Particion),actual_data = TibPIB)       
+#PronosticoEWMA
+```
+
+```{r}
+####Los mismo que hicimos anteriormente pero ahora creando objetos  
+#Modeltime  
+#model_tbl<-modeltime_table(ModeloEWMA) 
+## Calibración    
+#calibration_tbl<-model_tbl%>%
+  #modeltime_calibrate(testing(Particion)) 
+## Pronóstico sobre el conjunto de prueba   
+#calibration_tbl%>%
+  #modeltime_forecast(new_data = testing(Particion),actual_data = TibPIB)   
+###Residuales    
+#residuales_ajuste<-model_tbl%>%   
+  #modeltime_calibrate(new_data=training(Particion))%>%   
+  #modeltime_residuals()  
+#residuales_ajuste%>%plot_modeltime_residuals( .type="timeplot", .interactive = TRUE)    
+### Precisión de los pronósticos   
+#calibration_tbl%>%     
+  #modeltime_accuracy()      
+## Re-ajuste y predicción de valores futuros 
+#re_ajuste<-calibration_tbl%>%   
+  #modeltime_refit(data=TibPIB)  
+#re_ajuste%>%   
+  #modeltime_forecast(h=4,actual_data = TibPIB)%>%   
+  #plot_modeltime_forecast()  
+```
