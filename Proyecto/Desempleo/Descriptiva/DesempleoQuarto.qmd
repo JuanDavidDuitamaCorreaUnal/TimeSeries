@@ -48,11 +48,11 @@ library(readxl)
 #setwd("D:/Estadística/Semestres/Semestre 9/Series de Tiempo Univariadas/Datos")
 #Data <- read.csv("DesempleoLimpio")[,c(2,4)]
 #colnames(Data)<-c("AnioMes","TasaDesempleo")
-#setwd("C:/Users/EQUIPO/OneDrive/Documentos/GitHub/TimeSeries/Proyecto/Desempleo")#Ander
-#Data <- read_excel("Desempleo.xlsx", skip = 5, n_max = 276)
-#Data <- subset(Data, select = -`Tasa de ocupación (%)`)
-setwd("D:/Estadística/Semestres/Semestre 9/Series de Tiempo Univariadas/Datos")
-Data <- read.csv("DesempleoLimpio")[,c(2,4)]
+setwd("C:/Users/EQUIPO/OneDrive/Documentos/GitHub/TimeSeries/Proyecto/Desempleo")#Ander
+Data <- read_excel("Desempleo.xlsx", skip = 5, n_max = 276)
+Data <- subset(Data, select = -`Tasa de ocupación (%)`)
+#setwd("D:/Estadística/Semestres/Semestre 9/Series de Tiempo Univariadas/Datos")
+#Data <- read.csv("DesempleoLimpio")[,c(2,4)]
 colnames(Data)<-c("AnioMes","TasaDesempleo")
 ```
 
@@ -232,16 +232,9 @@ El gráfico de retardos indica que hay una relación lineal con el retardo núme
 ```{r}
 #El gráfico de retardos se realiza con la serie con tendencia extraída
 
-#Tendencia STL extraída
-par(mar = c(3,2,3,2))
-lag1.plot(STLextra, 12,corr=T)
 #Tendencia extraída por diferencia ordinaria
 par(mar = c(3,2,3,2))
 lag1.plot(DiferenciaOrd, 12,corr=T)
-#Tendencia extraída por promedio móvil
-par(mar = c(3,2,3,2))
-lag1.plot(ExtraProm[7:270], 12,corr=T)
-
 
 ```
 
@@ -260,25 +253,19 @@ La autocorrelación parcial indica que los único retardos que no aportan inform
 Un primer gráfico propuesto para la detección de la estacionalidad de forma visual es el siguiente, recordemos que está siendo aplicado en la serie con la tendencia extraída.
 
 ```{r}
-#Tendencia STL extraída
-TSstudio::ts_heatmap(STLextra,title = "Mapa de Calor - Tasa de Desempleo en Colombia(STL)")
-#Tendencia extraída por promedio móvil
-TSstudio::ts_heatmap(ExtraProm,title = "Mapa de Calor - Tasa de Desempleo en Colombia(Promedio móvil)")
 #Tendencia extraída por diferencia ordinaria
 TSstudio::ts_heatmap(DiferenciaOrd,title = "Mapa de Calor - Tasa de Desempleo en Colombia(Diferencia Ordinaria)")
 ```
 
-El mapa de calor indica que los valores más altos en la tasa de desempleo fueron reportados en el mes de enero, esto se logra apreciar más en el mapa de calor hecho a partir de la serie cuya tendencia fue extraída por diferencia ordinaria.
+El mapa de calor indica que los valores más altos en la tasa de desempleo fueron reportados en el mes de enero.
 
-En el siguiente gráfico se utilizan las subseries por cada mes, se aprecia más claramente la anterior aseveración, enero es el mes que suele tener las tasas de desempleo más altas, nuevamente se logra evidenciar más en el gráfico realizado con la serie cuya tendencia fue extraída por diferencia ordinaria.
+En el siguiente gráfico se utilizan las subseries por cada mes, se aprecia más claramente la anterior aseveración, enero es el mes que suele tener las tasas de desempleo más altas.
 
 ```{r}
-monthplot(STLextra,main="Subseries(STL)")
-monthplot(ExtraProm,main="Subseries(Promedio móvil)")
 monthplot(DiferenciaOrd,main="Subseries(Diferencia Ordinaria)")
 ```
 
-Otra alternativa es utilizar los gráficos de cajas, utilizaremos la serie con diferencia ordinaria puesto que ha sido aquella que ha mostrado mejores resultados.
+Otra alternativa es utilizar los gráficos de cajas.
 
 ```{r}
 tsibbleDesem <- tsibbleDesem %>%
@@ -304,29 +291,14 @@ ggplot(tsibbleDesem %>%na.omit()|>
 
 #### Encontrando el periodo de la serie
 
-El periodograma concluye en los tres casos que el periodo es 6, no obstante, se trabaja como 12, puesto que es un múltiplo de 6, además de que ya teníamos el periodo fijo de 12 al estar trabajando con una serie mensual.
+El periodograma concluye que el periodo es 3, sin embargo vemos que hay picos en 0.25, 0.16 y uno más pequeño en 0.083, estas frecuencias representan los periodos 4, 6 y 12 respectivamente. Sabemos que la serie es mensual, por lo que no es raro que el periodograma indique divisores del verdadero periodo, que es 12.
 
 ```{r}
-#STL
-PeriodgramadTra1=spectrum(as.numeric(STLextra),log='no')
-ubicacion1=which.max(PeriodgramadTra1$spec)
-
-#Promedio móvil
-PeriodgramadTra2=spectrum(as.numeric(ExtraProm[7:270]),log='no')
-ubicacion2=which.max(PeriodgramadTra2$spec)
-
 #Diferencia ordinaria
 PeriodgramadTra3=spectrum(as.numeric(DiferenciaOrd),log='no')
 ubicacion3=which.max(PeriodgramadTra3$spec)
 
-
-sprintf("El valor de la frecuencia donde se máximiza el periodograma para la serie con tendencia STL extraída es: %s",PeriodgramadTra1$freq[ubicacion1])
-
-sprintf("El periodo correspondiente es aproximadamente: %s",1/PeriodgramadTra1$freq[ubicacion1])
-sprintf("El valor de la frecuencia donde se máximiza el periodograma para la serie con tendencia extraída por promedio móvil es: %s",PeriodgramadTra2$freq[ubicacion2])
-
-sprintf("El periodo correspondiente es aproximadamente: %s",1/PeriodgramadTra2$freq[ubicacion2])
-sprintf("El valor de la frecuencia donde se máximiza el periodograma para la serie con tendencia extraída por diferencia ordinaria es: %s",PeriodgramadTra3$freq[ubicacion3])
+sprintf("El valor de la frecuencia donde se máximiza el periodograma es: %s",PeriodgramadTra3$freq[ubicacion3])
 
 sprintf("El periodo correspondiente es aproximadamente: %s",1/PeriodgramadTra3$freq[ubicacion3])
 
@@ -426,63 +398,15 @@ b_t & = \beta(a_t-a_{t-1}) + (1-\beta)b_{t-1} \\
 s_t & = \gamma(x_t-a_t) + (1-\gamma)s_{t-p}
 \end{align*}
 ```
-El siguiente ejemplo realiza un primer suavizamiento exponencial únicamente con la componente de Nivel sobre la tasa de desempleo con los datos originales; es decir, el único parámetro que se utilizará es $\alpha$.
 
-```{r}
-HWAP_inic=stats::HoltWinters(DesempleoTS,alpha=NULL,beta=FALSE,gamma=FALSE)
-plot(HWAP_inic)
-HWAP_inic
-```
-
-El resultado es una estimación sobreajustada de la serie, lo que generará pésimas predicciones como se muestra en el siguiente gráfico. Se realizarán predicciones para los siguientes 12 meses, es decir, el comportamiento de la tasa de Desempleo en el año 2024.
-
-```{r}
-plot(forecast::forecast(HWAP_inic,h=12,level =0.95,lambda = 1))
-
-```
 
 El siguiente modelo sí tendrá las tres componentes, por lo tanto, para evaluar la capacidad predictiva del modelo, utilizando la predicción a un paso, emplearemos el 80% de la serie como conjunto de entrenamiento y el 20% restante como prueba. Es decir, el periodo de entrenamiento corresponde a los primeros 221 meses, es decir, de enero de 2001 hasta mayo de 2019, por otro lado, el periodo de prueba corresponde a junio de 2019 hasta diciembre de 2023. Recordemos que trabajaremos la serie original.
 
 ```{r}
 Train=ts(DesempleoTS[1:221], start = c(2001, 1),frequency = 12)
 Test=ts(DesempleoTS[222:276],start=c(2019,6),frequency = 12)
-HWAP=stats::HoltWinters(Train,seasonal="additive")
-plot_ly(x = time(DesempleoTS[13:221]), y = DesempleoTS[13:221], type = 'scatter', mode = 'lines', color = I("red"), name = "Original") %>%
-add_trace(y = HWAP$fitted[,1], mode = 'lines', line = list(color = 'blue'), name = "EWMA") %>%
-  layout(title = 'Suavizamiento Exponencial',
-         xaxis = list(title = 'Mes', rangeslider = list(type = 'date')))
-
 ```
 
-```{r}
-ajustados=fitted(HWAP)#Guarda las estimaciones que hace el modelo para cada mes desde enero de 2002 hasta mayo de 2019
-plot(ajustados)#Gráfico de las tres componentes, nivel, pendiente y estacionalidad
-HWAP
-```
-
-La estimación del parámetro de Nivel alpha es 0.3114955, de Pendiente beta 0.02446716 y de estacionalidad gamma 0.4501506.
-
-Por último evaluaremos la capacidad predictiva del modelo haciendo las 55 predicciones para el periodo correspondiente a prueba. Junio de 2019 hasta diciembre de 2023. Indicamos también el Lambda 1 ya que se trabajo con la serie sin transformar.
-
-```{r}
-predictionHWAP_1=forecast::forecast(HWAP,h=55,level =0.95,lambda = 1) ### Cambié lambda a 1
-predictionHWAP_1
-plot(predictionHWAP_1)#Gráfico con pronósticos de los próximos 12 meses
-
-```
-
-El error cuadrático medio es
-
-```{r}
-mean((Test-predictionHWAP_1$mean)^2)
-```
-
-```{r}
-plot_ly(x = time(Test), y = Test, type = 'scatter', mode = 'lines', color = I("red"), name = "TasaDesempleo") %>%
-  add_trace(y = predictionHWAP_1$mean, mode = 'lines', line = list(color = 'blue'), name = "Predicciones") %>%
-  layout(title = 'Tasa de Desempleo vs Predicciones (Junio 2019-Diciembre 2023)',
-         xaxis = list(title = 'Mes', rangeslider = list(type = 'date')))
-```
 
 #### Rolling
 
@@ -552,7 +476,6 @@ plot_ly(x = time(Test), y = Test, type = 'scatter', mode = 'lines', color = I("r
 library(forecast)
 library(greybox)
 HWAP_train=stats::HoltWinters(train,seasonal="additive")
-?ro
 
 h=1
 ourCallETS <- "forecast::forecast(stats::HoltWinters(x=data,alpha=HWAP_train$alpha,beta=HWAP_train$beta,gamma=HWAP_train$gamma),h=h,level=95)"
@@ -564,125 +487,14 @@ t(Valoresretornados1$holdout)## Permiten verificar los verdaderos valores h-paso
 t(Valoresretornados1$mean)
 apply((Valoresretornados1$holdout -Valoresretornados1$mean)^2,1,mean,na.rm=TRUE) ### Se calcula el error cuadrático medio de predicción
 
-#apply(abs(Valoresretornados1$holdout - -Valoresretornados1$mean),1,mean,na.rm=TRUE) / mean(Valoresretornados1$actuals) ### Error medio absoluto escalado
 ```
 
-Vemos que el error cuadrático medio de las predicciones un paso adelante tanto en el rolling manual como utilizando la función son prácticamente iguales.
-
-#### Aquí acaba el rolling :b
-
-Usando objetos tsibble ahora
+Veamos si el error cuadrático medio haciendolo manualmente es igual a cuando utilizamos la función.
 
 ```{r}
-TrainOriginal=ts(DesempleoTS[1:221], start = c(2001, 1),frequency = 12)
-tsibbleDesemTrain<-as_tsibble(TrainOriginal)#Corrigiendo un problema que tenía este objeto tsibble, por eso lo creé de nuevo.
-Ajuste1=tsibbleDesemTrain%>%
-  model(ETS(value~ error("A")+trend("A")+season("A")))
-
-#Esto toca modificarlo para ponerle el Rolling
-#Pronostico1=Ajuste1%>%
-#  fabletools::forecast(h=55)
-#Pronostico1
-
-#Pronostico1%>%autoplot(tsibbleDesemTrain)+geom_line(aes(y=.fitted),col="red",data=augment(Ajuste1))+labs(y=" ",title="Pronóstico u ajustados")+guides(colour="none")
-
-#También puedo hacerlo con los datos originales, lo hago más tarde.
+apply((Valoresretornados1$holdout -Valoresretornados1$mean)^2,1,mean,na.rm=TRUE) == ECM
 ```
 
-Error cuadrático medio
 
-```{r}
-mean((Test-Pronostico1$.mean)^2)
-```
+Vemos que el error cuadrático medio de las predicciones un paso adelante tanto en el rolling manual como utilizando la función son iguales.
 
-### Suavizamiento exponencial utilizando la librería modeltime
-
-El procedimiento inicia con la creación de un objeto tibble de la serie.
-
-```{r}
-TibDesem<-as_tibble(tsibbleDesem)
-TibDesem$index<-as.Date(TibDesem$index)
-TibDesem<-rename(TibDesem,Fecha=index,Desem=value)
-TibDesem<-TibDesem%>%mutate(Original=box_cox_inv_vec(Desem,lambda = Lambda))
-```
-
-Posteriormente se divide la serie en conjunto de entrenamiento y de prueba.
-
-```{r}
-Particion=timetk::time_series_split(TibDesem,date_var=Fecha,assess = 12,cumulative = TRUE)#En este caso, al decir assess=12 indica que las últimas 12 observaciones serán utilizadas como conjunto de prueba
-Particion%>% tk_time_series_cv_plan()%>%
-  plot_time_series_cv_plan(Fecha,Desem)
-
-```
-
-Ajustando el modelo
-
-```{r}
-ModeloEWMA<-modeltime::exp_smoothing(
-  error="additive",
-  trend="additive",
-  season="additive"
-)%>%
-  set_engine("ets")%>%
-  fit(Desem ~ Fecha,data=training(Particion))
-
-
-modeltime_table(ModeloEWMA) %>%
-  modeltime_calibrate(testing(Particion))%>%
-  modeltime_forecast(
-    new_data = testing(Particion),
-    actual_data = TibDesem
-  )%>%
-  plot_modeltime_forecast(.conf_interval_fill = "lightblue")
-```
-
-```{r}
-##Se crea un objeto de pronóstico con los valores sobre el conjunto de prueba.
-PronosticoEWMA<-modeltime_table(ModeloEWMA) %>%
-  modeltime_calibrate(testing(Particion))%>%
-  modeltime_forecast(
-    new_data = testing(Particion),
-    actual_data = TibDesem
-  )
-    
- PronosticoEWMA
-```
-
-```{r}
-####Los mismo que hicimos anteriormente pero ahora creando objetos
- ## Modeltime
- model_tbl<-modeltime_table(ModeloEWMA)
-## Calibración 
-  calibration_tbl<-model_tbl%>%
-    modeltime_calibrate(testing(Particion))
-## Pronóstico sobre el conjunto de prueba
-  calibration_tbl%>%
-   modeltime_forecast(
-    new_data = testing(Particion),
-    actual_data = TibDesem
-  ) 
- ###Residuales 
-  residuales_ajuste<-model_tbl%>%
-  modeltime_calibrate(new_data=training(Particion))%>%
-  modeltime_residuals()
-
-residuales_ajuste%>%plot_modeltime_residuals(
-  .type="timeplot",
-  .interactive = TRUE)
-  
-### Precisión de los pronósticos
-  calibration_tbl%>%
-    modeltime_accuracy()
-  
-  ## Re-ajuste y predicción de valores futuros
-re_ajuste<-calibration_tbl%>%
-  modeltime_refit(data=TibDesem)
-
-re_ajuste%>%
-  modeltime_forecast(h=12,
-                     actual_data = TibDesem
-                     )%>%
-  plot_modeltime_forecast()
-
-
-```
