@@ -81,7 +81,7 @@ autocorrelación, especialmente en el gráfico de la serie cuya tendencia fue ex
 --------------------------------Suavizamiento exponencial------------------------------
 
 El suavizamiento exponencial es un modelo que contiene 3 parámetros, dos relacionados a la estimación de la componente de tendencia, y el 
-tercero a la componente de estacionalidad.El siguiente modelo sí tendrá las tres componentes, por lo tanto, para evaluar la capacidad predictiva 
+tercero a la componente de estacionalidad.El siguiente modelo tendrá las tres componentes, por lo tanto, para evaluar la capacidad predictiva 
 del modelo, utilizando la predicción a un paso, emplearemos el 80% de la serie como conjunto de entrenamiento y el 20% restante como prueba. 
 Es decir, el periodo de entrenamiento corresponde a los primeros 221 meses, los cuales correponden a enero de 2001 hasta mayo de 
 2019, por otro lado, el periodo de prueba corresponde a junio de 2019 hasta diciembre de 2023. Recordemos que trabajaremos la serie original.
