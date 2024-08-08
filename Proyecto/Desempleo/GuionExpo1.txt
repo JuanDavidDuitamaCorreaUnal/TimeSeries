@@ -1,0 +1,158 @@
+---------------------------------------------------------------------------------------------------------------------------------------
+------------------------------------Descripción serie del desempleo mensual en Colombia------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------------
+
+Buen día, el día de hoy les presentaremos el análisis hecho por Ander Cristancho, Anderson Guarín y Juan David Duitama sobre la tasa de desempleo
+en Colombia desde enero de 2001 hasta diciembre de 2023, tasa medida mensualmente.
+
+-----------------Primer gráfico de la serie-------------------
+
+En este primer gráfico podemos observar el comportamiento de la tasa de desempleo a lo largo de estos 23 años. En un primer vistazo podemos
+observar este pico correspondiente a la pandemia, dándose el punto máximo en abril de 2020. Antes de la pandemia (desde 2001 hasta 2019) se 
+presentaba un comportamiento decreciente, es decir, el desempleo disminuía con el paso de los años. Después del año 2022 el comportamiento 
+de la tasa de desempleo es similar al tenido previo a la pandemia.
+
+Revisando más detalladamente, la serie aparenta tener un ciclo que se repite cada año, es decir, una serie con periodo doce, en cada año, excep-
+tuando el 2020 y 2005, el mes en donde se reportó la mayor tasa de empleo siempre fue enero, después de enero se tuvo un comportamiento decreciente
+para incrementar nuevamente finalizando el año y repetirse nuevamente este patrón.
+
+-------------Primer gráfico de autocorrelación---------------
+
+Este es un primer gráfico de autocorrelación, sin embargo, no es válido puesto que nuestra serie de tiempo no tiene un comportamiento estacionario
+todavía.
+
+---------------Transformación de Box-Cox---------------------
+
+En los análisis posteriores no implementamos la estabilización de la varianza ya que a pesar de que el intervalo de confianza sugería hacer una
+transformación, obtuvimos una serie de tiempo con un comportamiento más heterogéneo. Por lo que no la usaremos.
+
+Nuevamente un gráfico de autocorrelación que no es válido.
+
+--------------------Extracción de tendencia-------------------------
+
+Empezaremos a retirar la tendencia de nuestra serie, implementamos 4 métodos, extracción por un modelo de regresión lineal simple, modelo
+no paramétrico, diferencia ordinaria y promedios móviles. 
+
+El modelo lineal no fue adecuado ya que este no captura el comportamiento de la pandemia, la serie resultante no oscila alrededor de un solo valor. 
+El modelo no paramétrico a pesar de que sí logra capturar este comportamiento, lo hace por medio del sobreajuste.
+Con la diferencia ordinaria obtenemos una serie que, al igual que la anterior, parece oscilar alrededor del cero, a pesar de que perdemos un dato
+(enero de 2001), la simplicidad y resultado del método nos incentivó a continuar los análisis con esta serie.
+Finalmente, con los promedios móviles también obtenemos una serie que oscila alrededor del cero, no obstante, utilizando este método perdemos
+12 datos, los primeros 6 meses de 2001 y los últimos 6 meses de 2023.
+
+Realizando nuevamente los gráficos de autocorrelación encontramos un patrón de presencia de estacionalidad.
+
+----------------Explorando relaciones lineales--------------------
+
+Recordemos que estamos trabajando con la serie cuya tendencia fue extraída por diferencia ordinaria, estos gráficos de dispersión entre los 
+retardos a primer vistazo no evidencian una relación, a excepción del retardo 12 que muestra una relación lineal considerable. El valor del
+coeficiente de correlación lineal es 0,6.
+
+--------------------Gráfico de autocorrelación parcial-------------------
+
+Yo digo que lo quitemos
+
+
+-------------------------Detección de estacionalidad---------------------
+
+Estos 4 gráficos indican que en enero suelen presentarse las tasas de desempleo más altas por año. En este primer gráfico de calor, los meses
+de enero son los más oscuros. Este gráfico de las subseries por mes, también indica que la tasa de desempleo en enero "oscila" alrededor de un
+valor mayor que los demás meses. Estos boxplots revelan lo mismo, al igual que el gráfico de las densidades hechas vía kernel, 
+la densidad de enero está ubicada más a la derecha.
+
+--------------------Periodo de la serie--------------------------
+
+El periodograma concluye que el periodo es 3, sin embargo vemos que hay picos en 0.25, 0.16 y uno más pequeño en 0.083, estas frecuencias 
+representan los periodos 4, 6 y 12 respectivamente. Sabemos que la serie es mensual, por lo que no es raro que el periodograma indique 
+divisores del verdadero periodo, que es 12.
+
+------------------------Extracción de la estacionalidad--------------------------
+
+Para extraer la estacionalidad implementamos dos métodos, mediante variables dummy y componentes de Fourier, utilizamos 1, 2, 3 y 4 componentes de
+Fourier.
+
+Este primer gráfico muestra, además de nuestra serie con diferencia ordinaria, las estimaciones de la componente estacional.
+
+Por último, este gráfico muestra, además de la serie con diferencia ordinaria, las series resultantes de extraer las estimaciones del anterior
+gráfico, lo primero que sale a la vista es el pico de abril de 2020, es un dato atípico, por lo que se requerirán alternativas adicionales para 
+modelar este período. El objetivo de estas extracciones es obtener series estacionarias, lo cual parece reflejarse en los gráficos de
+autocorrelación, especialmente en el gráfico de la serie cuya tendencia fue extraída por variables dummy.
+
+--------------------------------Suavizamiento exponencial------------------------------
+
+El suavizamiento exponencial es un modelo que contiene 3 parámetros, dos relacionados a la estimación de la componente de tendencia, y el 
+tercero a la componente de estacionalidad.El siguiente modelo sí tendrá las tres componentes, por lo tanto, para evaluar la capacidad predictiva 
+del modelo, utilizando la predicción a un paso, emplearemos el 80% de la serie como conjunto de entrenamiento y el 20% restante como prueba. 
+Es decir, el periodo de entrenamiento corresponde a los primeros 221 meses, los cuales correponden a enero de 2001 hasta mayo de 
+2019, por otro lado, el periodo de prueba corresponde a junio de 2019 hasta diciembre de 2023. Recordemos que trabajaremos la serie original.
+	
+
+El primer paso es encontrar las estimaciones de los parámetros utilizando el conjunto de entrenamiento. Obtenemos una estimación de la componente
+de nivel alpha de 0.3702, de pendiente beta igual a 0.0314, de estacionalidad gamma igual a 0.3471.
+
+Posterior a esto hacemos el rolling manualmente, nuestro horizonte de pronóstico es igual a 1, recordemos que estamos evaluando la predicción un
+paso adelante, modificaremos nuestra ventana en cada iteración, añadiendo un mes en cada iteración, ajustamos el modelo con los parámetros
+calculados en entrenamiento y realizamos el pronóstico. Por último, calculamos el error cuadrático medio, el cual nos da 3.7479.
+
+En este gráfico comparamos los pronósticos con la verdadera tasa de desempleo en este preiodo. Obteniendo resultados bastante buenos teniendo en
+cuenta que el conjunto de prueba incluye la pandemia.
+Por último está la implementación del Rolling utilizando funciones, nos da los mismos resultados.	
+
+
+---------------------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------Aprendizaje automático---------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------------
+
+------------------------------------Árboles-----------------------------------------
+
+
+
+-----------------------------------Redes multicapa----------------------------------
+
+
+
+-----------------------------------Redes recurrentes--------------------------------
+
+Utilizamos tres tipos de redes neuronales recurrentes, una normal, una GRU y una LSTM, además, hicimos 4 intentos añadiendo nuevas covariables
+a los 12 retardos con los que trabajamos.
+Al igual que en varios modelamientos, utilizamos el 80% de los datos para el entrenamiento y el 20% restante para probar la capacidad predictiva,
+no requerimos conjunto de validación ya que los hiperparámetros se calcularon mediante validación cruzada.
+
+Estandarizamos nuestra serie de tiempo y creamos los insumos para nuestras redes, utilizamos los 12 retardos como covariables. Teniendo así
+211 datos para entrenamiento y 53 para prueba.
+
+--Primer intento
+
+El primer intento consistió en modelar la tasa de desempleo utilizando únicamente los 12 retardos como covariables. Definimos 100 épocas y un
+tamaño de lote igual a 12, encontramos los hiperparámetros y entrenamos la red, para finalmente encontrar el error cuadrático medio.
+Obteniendo así 4.147 para la red normal, 2.0889 para la GRU y 3.427 para la LSTM, recordemos que estos no son los verdaderos errores cuadráticos
+medios, ya que fueron calculados con los pronósticos hechos para la tasa de desempleo estandarizada. Más adelante hallaremos los verdaderos MSE.
+
+Este primer gráfico muestra el comportamiento de la red en el conjunto de entrenamiento, y este segundo el comportamiento en el conjunto de prueba,
+podemos ver que la red GRU (línea amarilla) se acerca más a la tasa de desempleo estandarizada, no obstante no es un comportamiento óptimo.
+
+-- Segundo intento
+
+En este segundo intento, añadimos otras covariables con el fin de añadir la estacionalidad, variables dummy que indican el mes que se está
+prediciendo, la disposición del modelo es igual al anterior, simplemente tenemos más covariables.
+Cuando revisamos los MSE en los conjuntos de prueba obtenemos 3,061 para la red normal, 2.545 para la GRU y 5.192 para la LSTM. Recordemos que no
+son los verdaderos MSE. Tenemos una mejora en la red normal a comparación del anterior intento, sin embargo, cuando observamos cómo son los 
+pronósticos son realmente deficientes, tanto en entrenamiento como en prueba.
+
+-- Tercer intento
+
+A comparación del segundo intento, las variables de estacionalidad que añadimos son las componentes de Fourier, revisando los MSE en el conjunto
+de prueba, observamos que son los peores MSE hasta el momento. 7.778 para la red normal, 7.893 para la GRU y 4.436 para la LSTM.
+
+-- Cuarto intento
+
+En este último intento, en lugar de añadir una componente de estacionalidad, añadimos una componente de tendencia, la cual consiste en utilizar
+el promedio de las últimas 6 observaciones. Los MSE no mejoraron, obteniendo 8.103 en la red normal, 2.809 en la GRU y 4.618 en la LSTM. 
+Teniendo nuevamente pronósticos deficientes en los tres modelos.
+
+
+Por último, compararemos la verdadera tasa de desempleo con los pronósticos reescalados en los conjuntos de prueba, además de los  vredaderos MSE.
+El modelo que mejor MSE tiene, ya con los datos originales y pronósticos reescalados fue la primera red GRU, aquella que únicamente tenía como
+covariables los 12 retardos. su valor es de 12.436. Los pronósticos correspondientes a este modelo es esta línea amarilla de este primer gráfico.
+
+Los demás pronósticos reescalados en los otros intentos fueron realmente deficientes.
