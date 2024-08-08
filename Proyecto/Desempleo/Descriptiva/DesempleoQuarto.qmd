@@ -400,7 +400,7 @@ s_t & = \gamma(x_t-a_t) + (1-\gamma)s_{t-p}
 ```
 
 
-El siguiente modelo sí tendrá las tres componentes, por lo tanto, para evaluar la capacidad predictiva del modelo, utilizando la predicción a un paso, emplearemos el 80% de la serie como conjunto de entrenamiento y el 20% restante como prueba. Es decir, el periodo de entrenamiento corresponde a los primeros 221 meses, es decir, de enero de 2001 hasta mayo de 2019, por otro lado, el periodo de prueba corresponde a junio de 2019 hasta diciembre de 2023. Recordemos que trabajaremos la serie original.
+El siguiente modelo tendrá las tres componentes, por lo tanto, para evaluar la capacidad predictiva del modelo, utilizando la predicción a un paso, emplearemos el 80% de la serie como conjunto de entrenamiento y el 20% restante como prueba. Es decir, el periodo de entrenamiento corresponde a los primeros 221 meses, es decir, de enero de 2001 hasta mayo de 2019, por otro lado, el periodo de prueba corresponde a junio de 2019 hasta diciembre de 2023. Recordemos que trabajaremos la serie original.
 
 ```{r}
 Train=ts(DesempleoTS[1:221], start = c(2001, 1),frequency = 12)
@@ -496,5 +496,5 @@ apply((Valoresretornados1$holdout -Valoresretornados1$mean)^2,1,mean,na.rm=TRUE)
 ```
 
 
-Vemos que el error cuadrático medio de las predicciones un paso adelante tanto en el rolling manual como utilizando la función son iguales.
+El error cuadrático medio de las predicciones un paso adelante tanto en el rolling manual como utilizando la función son iguales.
 
