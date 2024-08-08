@@ -1,0 +1,319 @@
+---
+title: "PIBQuarto"
+format: html
+editor: visual
+lang: es
+---
+
+El siguiente trabajo abarca todas las metodologías vistas en el semestre 2024-1 de la asignatura Series de Tiempo Univariadas, utilizando la medición trimestral del PIB en Colombia a precios constantes (calculando el agregado a partir de la suma de las actividades económicas de Colombia), a partir del primer trimestre de 2005, hasta el último trimestre del 2023.
+
+## Integrantes
+
+-   Ander Cristancho
+-   Anderson Guarin
+-   Juan David Duitama
+
+## Librerías utilizadas
+
+```{r}
+#| messages: FALSE
+#| warning: FALSE
+
+library(plotly)
+library(forecast)
+library(MASS)
+library(tidyverse)
+library(lubridate)
+library(timetk)
+library(tibble)
+library(zoo)
+library(tsibble)
+library(feasts)
+library(fable)
+library(cowplot)
+library(astsa)
+library(TSstudio)
+library(fabletools)
+library(TSA)
+library(readxl)
+```
+
+## Importación de datos
+
+```{r}
+PIB3 <- read_excel("C:/Users/ander/OneDrive - Universidad Nacional de Colombia/Documentos/(2024-01) Octavo Semestre/Series de Tiempo Univariadas/Proyecto/1. Bases de Datos/PIB.xlsx", range = "AS18:AS93", col_names = FALSE)
+```
+
+## Visualización de datos
+
+```{r}
+PIB3TS <- ts(PIB3, start = c(2005, 1), end = c(2023, 4), frequency = 4)
+#Convirtiendo los datos originales en objeto serie de tiempo(ts)
+plot_ly( x = time(PIB3TS), y = PIB3TS, type = 'scatter', mode = 'lines',color=I("red")) %>%
+  layout(title = 'PIB Trimestral en Colombia',
+         xaxis = list(title = 'Trimestre', rangeslider = list(type = 'date')))
+
+```
+
+La conclusión inicial con este primer gráfico es que se observa la tendencia creciente del PIB, se presentó una caída súbita a partir del año 2020, ya es sabido lo que ocurrió en ese periodo. Una vez llegado el tercer trimestre de 2021, el PIB consiguió seguir la tendencia creciente que se tenía desde antes de la pandemia.
+
+## Autocorrelación
+
+A continuación, se presenta un primer gráfico de la autocorrelación, recordemos que éste no es válido, hasta que retiremos la tendencia y la estacionalidad.
+
+```{r}
+acf(PIB3TS,lag.max = length(PIB3TS))
+```
+
+## Análisis descriptivo
+
+Como ya mencionamos anteriormente, el primer componente que se puede identificar en la serie de tiempo es la tendencia creciente del PIB, aparenta haber un ciclo en el que se tienen años con PIB con tendencia a aumentar, luego, se tienen otros años en los que su tendencia disminuye. Se puede observar esto desde 2001 hasta alrededor del segundo trimestre de 2008, luego desciende, hasta empezar a crecer de nuevo, para empezar a decrecer en 2012 y crecer nuevamente en 2013.
+
+### Estabilización de la Varianza (Tranformación Box-Cox)
+
+Primero se recurre a realizar la estabilización de la varianza de la serie, a través de la **Transformación Box-Cox**.
+
+```{r}
+Lambda<-BoxCox.lambda(PIB3TS, method ="loglik", lower = -3, upper = 3)#Encontrando el valor de Lambda
+Lambda
+```
+
+El $\lambda$ resultante es cercano a 1, por lo que no será necesario realizar una transformación sobre los datos.
+
+```{r}
+MASS::boxcox(lm(PIB3TS ~ 1),seq(-3, 3, length = 50))
+```
+
+Con el Boxcox, se confirma que $\lambda$ tiene un valor cercano a 1, pero que abarca el 0 en su intervalo de confianza.
+
+### Extracción de la tendencia
+
+#### Estimación mediante un modelo lineal
+
+A continucación, se realiza un modelo de regresión lineal simple utilizando como variable regresora el tiempo, y como variable de estudio, el PIB trimestral.
+
+```{r}
+summary(fitLM <- lm(PIB3TS~time(PIB3TS), na.action=NULL))#Creando un modelo de regresión lineal
+plot(PIB3TS, ylab="PIB trimestral en Colombia",xlab="Trimestre") 
+abline(fitLM,col = "red")
+
+```
+
+Haciendo una revisión meramente visual, el modelo lineal resultante logra capturar el comportamiento creciente del PIB trimestral, ignorando el suceso ocurrido en 2020 claramente. La serie resultante de extraer esta tendencia lineal es la siguiente.
+
+```{r}
+PIB3NoLM=PIB3TS-predict(fitLM)#Eliminando la tendencia
+plot_ly( x = time(PIB3NoLM), y = PIB3NoLM, type = 'scatter', mode = 'lines',color=I("red")) %>%
+  layout(title = 'PIB trimestral en Colombia con tendencia lineal extraída',
+         xaxis = list(title = 'Trimestre', rangeslider = list(type = 'date')))
+```
+
+Al realizar la extracción respectiva, la serie resultante no es adecuada para continuar con el análisis, puesto que el valle resultante de la extracción en años de pandemia perjudica los próximos procedimientos. Lo cual provocaría que al realizar predicciones bajo el modelo lineal, éstas sean subajustadas.
+
+#### Diferencia ordinaria
+
+```{r}
+DiferenciaOrd<-diff(PIB3TS)
+plot_ly( x = time(DiferenciaOrd), y = DiferenciaOrd, type = 'scatter', mode = 'lines',color=I("red")) %>%
+  layout(title = 'PIB sin tendencia(Diferencia Ordinaria, lag=1)',
+         xaxis = list(title = 'Trimestre', rangeslider = list(type = 'date')))
+```
+
+Las conclusiones al extraer la tendencia, mediante diferencia ordinaria,
+
+#### Comparando las funciones de autocorrelación de las series sin tendencia
+
+```{r}
+acf(PIB3TS,lag.max = length(PIB3TS))
+
+par(mfrow = c(1, 1))
+acf(PIB3NoLM,lag.max =length(PIB3NoLM),main="Autocorrelación serie sin tendencia lineal")
+acf(DiferenciaOrd,lag.max =length(DiferenciaOrd),main="Autocorrelación serie sin tendencia\npor diferencia ordinaria")
+```
+
+### Explorando relaciones no lineales
+
+#### Gráficos de retardos
+
+El gráfico de retardos indica que hay una relación lineal con el retardo número 4 en la serie con tendencia extraída por diferencia ordinaria.
+
+```{r}
+#El gráfico de retardos se realiza con la serie con tendencia extraída
+
+#Tendencia extraída por diferencia ordinaria
+par(mar = c(3,2,3,2))
+lag1.plot(DiferenciaOrd, 4,corr=T)
+```
+
+### Detección de estacionalidad
+
+Un primer gráfico propuesto para la detección de la estacionalidad de forma visual es el siguiente, recordemos que está siendo aplicado en la serie con la tendencia extraída.
+
+```{r}
+#Tendencia extraída por diferencia ordinaria
+TSstudio::ts_heatmap(DiferenciaOrd,title = "Mapa de Calor - PIB en Colombia(Diferencia Ordinaria)")
+```
+
+```{r}
+monthplot(DiferenciaOrd,main="Subseries(Diferencia Ordinaria)")
+```
+
+Otra alternativa es utilizar los gráficos de cajas
+
+```{r}
+indice1=as.Date(as.yearmon(tk_index(PIB3TS)))#Convirtiendo en fecha el indice de DesempleoTSBox, deja como primero de enero cada fecha
+indice1.1=yearmon(as.yearmon(tk_index(PIB3TS)))#Dejando esa fecha solo como año y mes
+
+## Haciendo el objeto tsibble
+df=data.frame(Fecha=indice1,PIB=as.matrix(PIB3TS))
+colnames(df)[2]<-"PIB"
+PIB3TSibble=as_tsibble(df)
+## Haciendo el objeto tsibble
+df=data.frame(Fecha=indice1,PIB=as.matrix(PIB3TS))
+colnames(df)[2]<-"PIB"
+PIB3TSibble=as_tsibble(df)
+```
+
+```{r}
+PIB3TSibble <- PIB3TSibble %>%
+  mutate(index = as.Date(Fecha))
+PIB3TSibble<-PIB3TSibble%>%mutate(Diferencia=PIB-lag(PIB))
+PIB3TSibble %>%
+  na.omit() %>%
+  plot_seasonal_diagnostics(.date_var = index, .value = Diferencia, .feature_set = c("quarter"), .geom = "boxplot")
+```
+
+Finalmente, un gráfico con las estimaciones de las densidades.
+
+```{r}
+ggplot(PIB3TSibble %>%na.omit()|>
+    mutate(
+        Trimestre = str_c("Trimestre ", as.character(lubridate::quarter(index)))
+    ), aes(x = Diferencia)) +
+      geom_density(aes(fill = Trimestre)) +
+      ggtitle("LosPass - Estimación de la densidad vía Kernel por trimestre") +
+      facet_grid(rows = vars(as.factor(Trimestre)))
+```
+
+#### Encontrando el periodo de la serie
+
+```{r}
+
+#Diferencia ordinaria
+PeriodgramadTra=spectrum(as.numeric(DiferenciaOrd),log='no')
+ubicacion=which.max(PeriodgramadTra$spec)
+
+sprintf("El valor de la frecuencia donde se máximiza el periodograma para la serie con tendencia extraída por diferencia ordinaria es: %s",PeriodgramadTra$freq[ubicacion])
+
+sprintf("El periodo correspondiente es aproximadamente: %s",1/PeriodgramadTra$freq[ubicacion])
+```
+
+De acuerdo a la información reportada en el gráfico de periodograma, no es necesario modelar la estacionalidad.
+
+## Suavizamiento Exponencial
+
+El suavizamiento exponencial es un modelo que contiene 3 parámetros, dos relacionados a la estimación de la componente de tendencia, y el tercero a la componente de estacionalidad. Teniendo en cuenta que para este conjunto de datos no se requiere modelar la estacionalidad, solo se tendrán en cuenta los parámetros correspondientes a la compente de tendencia.
+
+```{=tex}
+\begin{align*}
+a_t & = \alpha(x_t-s_{t-p}) + (1-\alpha)(a_{t-1}+b_{t-1}) \\
+b_t & = \beta(a_t-a_{t-1}) + (1-\beta)b_{t-1} \\
+\end{align*}
+```
+El siguiente modelo se manejará con los datos originales, por lo tanto, para evaluar la capacidad predictiva del modelo, utilizando la predicción a un paso, emplearemos el 80% de la serie como conjunto de entrenamiento y el 20% restante como prueba. Es decir, el periodo de entrenamiento corresponde a los primeros 61 trimestres, es decir, de enero de 2005 hasta marzo de 2020, por otro lado, el periodo de prueba corresponde a abril de 2020 hasta diciembre de 2023.
+
+```{r}
+Train=ts(PIB3TS[1:61], start = c(2005, 1),frequency = 4) 
+Test=ts(PIB3TS[62:76],start=c(2020,2),frequency = 4) 
+HWAP=stats::HoltWinters(Train,gamma=0) 
+plot_ly(x = time(PIB3TS[5:61]), y = PIB3TS[5:61], type = 'scatter', mode = 'lines', color = I("red"), name = "Original") %>% add_trace(y = HWAP$fitted[,1], mode = 'lines', line = list(color = 'blue'), name = "EWMA") %>%   layout(title = 'Suavizamiento Exponencial',xaxis = list(title = 'Trimestre', rangeslider = list(type = 'date'))) 
+```
+
+```{r}
+ajustados=fitted(HWAP)#Guarda las estimaciones que hace el modelo para cada trimestre desde enero de 2004 hasta marzo de 2020 
+plot(ajustados)#Gráfico de las tres componentes, nivel, pendiente y estacionalidad 
+HWAP
+```
+
+La estimación del parámetro de Nivel alpha es 0.8704311, de Pendiente beta 0.08945198 y de estacionalidad gamma 1.
+
+Por último evaluaremos la capacidad predictiva del modelo haciendo las 15 predicciones para el periodo correspondiente a prueba. Abril de 2020 hasta diciembre de 2023.
+
+```{r}
+predictionHWAP_1=forecast::forecast(HWAP,h=15) 
+predictionHWAP_1 
+plot(predictionHWAP_1)
+```
+
+El error cuadrático medio es
+
+```{r}
+mean((Test-predictionHWAP_1$mean)^2)
+```
+
+Recordemos que el error cuadrático medio es alto debido a que los datos se encuentran en la escala original.
+
+```{r}
+plot_ly(x = time(Test), y = Test, type = 'scatter', mode = 'lines', color = I("red"), name = "PIB") %>%   add_trace(y = predictionHWAP_1$mean, mode = 'lines', line = list(color = 'blue'), name = "Predicciones") %>%   layout(title = 'PIB vs Predicciones (Abril 2020-Diciembre 2023)',xaxis = list(title = 'Trimestre', rangeslider = list(type = 'date')))
+```
+
+**Rolling**
+
+##### Rolling manual
+
+```{r Rolling 1}
+h=1  
+lserie=length(PIB3TS) 
+ntrain=trunc(length(PIB3TS)*0.80)+1 ##% del datos en el conjunto de entrenamiento es del 80%. 
+ntrain 
+time(PIB3TS) 
+time(PIB3TS)[ntrain]###Me entrega la ultima fecha de la posición ntrain #Partiendo la serie en entrenamiento y test 
+train=window(PIB3TS,end=time(PIB3TS)[ntrain]) 
+test=window(PIB3TS,start=time(PIB3TS)[ntrain]+1/4)##1/4 porque es la fracción que corresponde a un trimestre 
+length(train) 
+ntest=length(test) 
+ntest ##Me define el valor de origins, o de ventanas de rolling. 
+lserie ### Comparar los valores 
+fchstepahe=matrix(0,nrow=ntest,ncol=h) ##Crea una Columna para los h-pasos adelante ### verval contiene los verdaderos valores de la serie en el conjunto de prueba con los que se compararán los pronósticos. 
+verval=cbind(test[1:ntest]) #for(j in 2:h){  # verval=cbind(verval,c(test[j:ntest],rep(NA,j-1))) ##### Este for sobra porque sólo hacemos predicción un paso adelante #}  #verval=cbind(test[1:ntest],c(test[2:ntest],NA),c(test[3:ntest],NA,NA)) ####Ajuste del modelo con los datos de entrenamiento 
+HWAP_train=stats::HoltWinters(train,gamma = 0) 
+HWAP_train$alpha 
+HWAP_train$beta 
+HWAP_train$gamma ###Observación: Note que que esos son las estimaciones de los parámetros de suavizamiento. Se puede también hacer una grilla de valores para explorar si hay unos valores mejores. # por ejemplo como sigue: 
+require(utils) 
+suav_inputs=cbind(seq(0.001,0.999,0.1),seq(0.001,0.999,0.1)) 
+colnames(suav_inputs)<-c("alpha","beta") 
+suav_inputs_tbl=tibble::as_tibble(suav_inputs) 
+grilla_suav=expand.grid(alpha=suav_inputs_tbl$alpha,beta=suav_inputs_tbl$beta) ##Grilla de Valores ####Se crean las ventanas de rolling y se obtiene los h-pronósticos para cada ventana(hay ntest posibles ventanas) 
+for(i in 1:(ntest)){x=window(PIB3TS,end=time(PIB3TS)[ntrain]+(i-1)/12)   
+print(length(x))   
+refit=stats::HoltWinters(x,seasonal=NULL,alpha=HWAP_train$alpha,bet=HWAP_train$beta)     
+  fchstepahe[i,]=as.numeric(forecast::forecast(refit,h=h)$mean) } 
+fchstepahe  
+errores_pred=verval -fchstepahe ##Observación: debo devolver los pronósticos y los verdaderos valores a la escala original si es necesario. 
+ECM=apply(errores_pred^2,MARGIN = 2,mean,na.rm=TRUE) ##Acá se computa la medida de precisión del pronóstico(en este caso ECM). 
+RECM=sqrt(ECM) ##Se le saca raíz  #RECM ##se lee: Primera fila RECM 1-paso adelante y así sucesivamente. 
+ECM
+```
+
+```{r}
+plot_ly(x = time(test), y = test, type = 'scatter', mode = 'lines', color = I("red"), name = "PIB") %>%   
+  add_trace(y = fchstepahe, mode = 'lines', line = list(color = 'blue'), name = "Predicciones") %>%   
+  layout(title = 'PIB vs Predicciones (Abril 2020-Diciembre 2023)',          xaxis = list(title = 'Trimestre', rangeslider = list(type = 'date')))
+```
+
+##### Rolling usando la función
+
+```{r rolling 2}
+library(forecast) 
+library(greybox) 
+HWAP_train=stats::HoltWinters(train,gamma=0)   
+h=1 
+ourCallETS <- "forecast::forecast(stats::HoltWinters(x=data,alpha=HWAP_train$alpha,beta=HWAP_train$beta),h=h)" ###Note que x=data es solo un argumento indeterminado. 
+ourValueETS <- c("mean","lower","upper") 
+origins=ntest   ##número de rolling windows 
+Valoresretornados1 <- ro(PIB3TS, h=h, origins=origins, call=ourCallETS, value=ourValueETS,ci=FALSE,co=FALSE) 
+t(Valoresretornados1$holdout)## Permiten verificar los verdaderos valores h-pasos adelante.  
+t(Valoresretornados1$mean) 
+apply((Valoresretornados1$holdout -Valoresretornados1$mean)^2,1,mean,na.rm=TRUE) ### Se calcula el error cuadrático medio de predicción  
+```
