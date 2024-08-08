@@ -67,7 +67,7 @@ acf(PIB3TS,lag.max = length(PIB3TS))
 
 ## Análisis descriptivo
 
-Como ya mencionamos anteriormente, el primer componente que se puede identificar en la serie de tiempo es la tendencia creciente del PIB, aparenta haber un ciclo en el que se tienen años con PIB con tendencia a aumentar, luego, se tienen otros años en los que su tendencia disminuye. Se puede observar esto desde 2001 hasta alrededor del segundo trimestre de 2008, luego desciende, hasta empezar a crecer de nuevo, para empezar a decrecer en 2012 y crecer nuevamente en 2013.
+Como ya mencionamos anteriormente, el primer componente que se puede identificar en la serie de tiempo es la tendencia creciente del PIB, aparenta haber un ciclo en el que se tienen años con PIB con tendencia a aumentar. Se puede observar esto desde 2005 hasta alrededor del segundo trimestre de 2008, luego desciende, hasta empezar a crecer de nuevo, para empezar a decrecer en 2012 y crecer nuevamente en 2013. Finalmente, se presenta la caída de pandemia, de la cual se ha venido recuperando la tendencia creciente hasta el final de la serie.
 
 ### Estabilización de la Varianza (Tranformación Box-Cox)
 
@@ -90,7 +90,7 @@ Con el Boxcox, se confirma que $\lambda$ tiene un valor cercano a 1, pero que ab
 
 #### Estimación mediante un modelo lineal
 
-A continucación, se realiza un modelo de regresión lineal simple utilizando como variable regresora el tiempo, y como variable de estudio, el PIB trimestral.
+A continuación, se realiza un modelo de regresión lineal simple utilizando como variable regresora el tiempo, y como variable de estudio, el PIB trimestral.
 
 ```{r}
 summary(fitLM <- lm(PIB3TS~time(PIB3TS), na.action=NULL))#Creando un modelo de regresión lineal
@@ -119,7 +119,7 @@ plot_ly( x = time(DiferenciaOrd), y = DiferenciaOrd, type = 'scatter', mode = 'l
          xaxis = list(title = 'Trimestre', rangeslider = list(type = 'date')))
 ```
 
-Las conclusiones al extraer la tendencia, mediante diferencia ordinaria,
+Las conclusiones al extraer la tendencia, mediante diferencia ordinaria, mantienen el mismo punto que la extracción mediante tendencia lineal. Por lo tanto, en algunos de los apartados trabajaremos con los datos originales.
 
 #### Comparando las funciones de autocorrelación de las series sin tendencia
 
@@ -161,8 +161,8 @@ monthplot(DiferenciaOrd,main="Subseries(Diferencia Ordinaria)")
 Otra alternativa es utilizar los gráficos de cajas
 
 ```{r}
-indice1=as.Date(as.yearmon(tk_index(PIB3TS)))#Convirtiendo en fecha el indice de DesempleoTSBox, deja como primero de enero cada fecha
-indice1.1=yearmon(as.yearmon(tk_index(PIB3TS)))#Dejando esa fecha solo como año y mes
+indice1=as.Date(as.yearmon(tk_index(PIB3TS)))#Convirtiendo en fecha el indice del PIB, deja como primero de enero cada fecha
+indice1.1=yearmon(as.yearmon(tk_index(PIB3TS)))
 
 ## Haciendo el objeto tsibble
 df=data.frame(Fecha=indice1,PIB=as.matrix(PIB3TS))
@@ -198,7 +198,6 @@ ggplot(PIB3TSibble %>%na.omit()|>
 #### Encontrando el periodo de la serie
 
 ```{r}
-
 #Diferencia ordinaria
 PeriodgramadTra=spectrum(as.numeric(DiferenciaOrd),log='no')
 ubicacion=which.max(PeriodgramadTra$spec)
@@ -235,7 +234,7 @@ plot(ajustados)#Gráfico de las tres componentes, nivel, pendiente y estacionali
 HWAP
 ```
 
-La estimación del parámetro de Nivel alpha es 0.8704311, de Pendiente beta 0.08945198 y de estacionalidad gamma 1.
+La estimación del parámetro de Nivel alpha es 1, de Pendiente beta 0.05826555 y de estacionalidad gamma 0.
 
 Por último evaluaremos la capacidad predictiva del modelo haciendo las 15 predicciones para el periodo correspondiente a prueba. Abril de 2020 hasta diciembre de 2023.
 
@@ -269,30 +268,32 @@ ntrain
 time(PIB3TS) 
 time(PIB3TS)[ntrain]###Me entrega la ultima fecha de la posición ntrain #Partiendo la serie en entrenamiento y test 
 train=window(PIB3TS,end=time(PIB3TS)[ntrain]) 
-test=window(PIB3TS,start=time(PIB3TS)[ntrain]+1/4)##1/4 porque es la fracción que corresponde a un trimestre 
+test=window(PIB3TS,start=time(PIB3TS)[ntrain]+1/4) ##1/4 porque es la fracción que corresponde a un trimestre 
 length(train) 
 ntest=length(test) 
 ntest ##Me define el valor de origins, o de ventanas de rolling. 
 lserie ### Comparar los valores 
 fchstepahe=matrix(0,nrow=ntest,ncol=h) ##Crea una Columna para los h-pasos adelante ### verval contiene los verdaderos valores de la serie en el conjunto de prueba con los que se compararán los pronósticos. 
-verval=cbind(test[1:ntest]) #for(j in 2:h){  # verval=cbind(verval,c(test[j:ntest],rep(NA,j-1))) ##### Este for sobra porque sólo hacemos predicción un paso adelante #}  #verval=cbind(test[1:ntest],c(test[2:ntest],NA),c(test[3:ntest],NA,NA)) ####Ajuste del modelo con los datos de entrenamiento 
+verval=cbind(test[1:ntest]) # Predicción un paso adelante
+####Ajuste del modelo con los datos de entrenamiento 
 HWAP_train=stats::HoltWinters(train,gamma = 0) 
 HWAP_train$alpha 
-HWAP_train$beta 
-HWAP_train$gamma ###Observación: Note que que esos son las estimaciones de los parámetros de suavizamiento. Se puede también hacer una grilla de valores para explorar si hay unos valores mejores. # por ejemplo como sigue: 
+HWAP_train$beta ###Observación: Note que que esos son las estimaciones de los parámetros de suavizamiento. Se puede también hacer una grilla de valores para explorar si hay unos valores mejores. # por ejemplo como sigue: 
 require(utils) 
 suav_inputs=cbind(seq(0.001,0.999,0.1),seq(0.001,0.999,0.1)) 
 colnames(suav_inputs)<-c("alpha","beta") 
 suav_inputs_tbl=tibble::as_tibble(suav_inputs) 
-grilla_suav=expand.grid(alpha=suav_inputs_tbl$alpha,beta=suav_inputs_tbl$beta) ##Grilla de Valores ####Se crean las ventanas de rolling y se obtiene los h-pronósticos para cada ventana(hay ntest posibles ventanas) 
+grilla_suav=expand.grid(alpha=suav_inputs_tbl$alpha,beta=suav_inputs_tbl$beta) ##Grilla de Valores 
+####Se crean las ventanas de rolling y se obtiene los h-pronósticos para cada ventana(hay ntest posibles ventanas) 
 for(i in 1:(ntest)){x=window(PIB3TS,end=time(PIB3TS)[ntrain]+(i-1)/12)   
 print(length(x))   
-refit=stats::HoltWinters(x,seasonal=NULL,alpha=HWAP_train$alpha,bet=HWAP_train$beta)     
+refit=stats::HoltWinters(x,gamma=0,alpha=HWAP_train$alpha,bet=HWAP_train$beta)     
   fchstepahe[i,]=as.numeric(forecast::forecast(refit,h=h)$mean) } 
-fchstepahe  
+fchstepahe
 errores_pred=verval -fchstepahe ##Observación: debo devolver los pronósticos y los verdaderos valores a la escala original si es necesario. 
 ECM=apply(errores_pred^2,MARGIN = 2,mean,na.rm=TRUE) ##Acá se computa la medida de precisión del pronóstico(en este caso ECM). 
-RECM=sqrt(ECM) ##Se le saca raíz  #RECM ##se lee: Primera fila RECM 1-paso adelante y así sucesivamente. 
+RECM=sqrt(ECM) ##Se le saca raíz  
+#RECM ##se lee: Primera fila RECM 1-paso adelante y así sucesivamente. 
 ECM
 ```
 
@@ -309,11 +310,11 @@ library(forecast)
 library(greybox) 
 HWAP_train=stats::HoltWinters(train,gamma=0)   
 h=1 
-ourCallETS <- "forecast::forecast(stats::HoltWinters(x=data,alpha=HWAP_train$alpha,beta=HWAP_train$beta),h=h)" ###Note que x=data es solo un argumento indeterminado. 
+ourCallETS <- "forecast::forecast(stats::HoltWinters(x=data,alpha=HWAP_train$alpha,beta=HWAP_train$beta,gamma=0),h=h)" ###Note que x=data es solo un argumento indeterminado. 
 ourValueETS <- c("mean","lower","upper") 
 origins=ntest   ##número de rolling windows 
 Valoresretornados1 <- ro(PIB3TS, h=h, origins=origins, call=ourCallETS, value=ourValueETS,ci=FALSE,co=FALSE) 
 t(Valoresretornados1$holdout)## Permiten verificar los verdaderos valores h-pasos adelante.  
 t(Valoresretornados1$mean) 
-apply((Valoresretornados1$holdout -Valoresretornados1$mean)^2,1,mean,na.rm=TRUE) ### Se calcula el error cuadrático medio de predicción  
+apply((Valoresretornados1$holdout -Valoresretornados1$mean)^2,1,mean,na.rm=TRUE) ### Se calcula el error cuadrático medio de predicción
 ```
