@@ -316,5 +316,5 @@ origins=ntest   ##número de rolling windows
 Valoresretornados1 <- ro(PIB3TS, h=h, origins=origins, call=ourCallETS, value=ourValueETS,ci=FALSE,co=FALSE) 
 t(Valoresretornados1$holdout)## Permiten verificar los verdaderos valores h-pasos adelante.  
 t(Valoresretornados1$mean) 
-apply((Valoresretornados1$holdout -Valoresretornados1$mean)^2,1,mean,na.rm=TRUE) ### Se calcula el error cuadrático medio de predicción  
+apply((Valoresretornados1$holdout -Valoresretornados1$mean)^2,1,mean,na.rm=TRUE) ### Se calcula el error cuadrático medio de predicción
 ```
