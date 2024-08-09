@@ -246,7 +246,7 @@ Del gráfico de retardos de la diferencia ordinaria, se seleccionan los retardos
 pacf(DiferenciaOrd, 12)
 ```
 
-La autocorrelación parcial indica que los único retardos que no aportan información relevante son el 1, 7 y 8.
+La autocorrelación parcial indica que los retardos 3, 6, 8 y 9 no parecen aportar información relevante.
 
 ### Extracción de estacionalidad
 
