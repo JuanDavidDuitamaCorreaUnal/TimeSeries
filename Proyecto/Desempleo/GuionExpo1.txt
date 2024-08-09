@@ -105,11 +105,158 @@ Por último está la implementación del Rolling utilizando funciones, nos da lo
 
 ------------------------------------Árboles-----------------------------------------
 
+--- Introducción a árboles
 
+Para esta parte de árboles de decisión, podemos dividir el modelamiento en dos partes, un árbol modelando la serie con la tendencia extraída y un 
+árbol modelando la serie original. Recordemos que estaremos utilizando la serie con la tendencia extraída aplicando diferenciación ordinaria. Creamos
+los inputs y outputs, por lo que tendremos un dataframe que contiene los 12 primeros retardos y como output el tiempo t, o sea, haremos la predicción
+un paso adelante.
+
+--- División de los datos 
+
+Dividimos los datos en entrenamiento, validación y prueba, teniendo como porcentajes un 70% de los datos para entrenamiento,el siguiente 10% de 
+datos para validación y el 20% restante de los datos para prueba, 211 datos para entrenamiento y 52 para prueba (debido a que perdimos un dato por
+la diferenciación ordinaria.)
+
+--- Primera parte: Creación del árbol con tendencia extraida
+
+Primero creamos un árbol sin especificar una profundidad, para el que tenemos este ECM el cual cabe aclarar, no está en la escala original, vemos que
+sobreajusta en entrenamiento pues el R^2 es 1, sin embargo en validación no se desempeña tan bien, para aplacar esto, probaremos distintas 
+profundidades, de 2 a 12. En esta iteración y utilizando comosemilla "...", la mejor profundidad es "...", por lo que procedemos a crear el árbol 
+juntando entrenamiento y validación con esta profundidad. 
+
+--- Gráfico predicciones VS verdaderos valores
+
+Este primer gráfico nos muestra las predicciones en el eje X versus los verdaderos valores en el eje Y. El color azul representa esto en el 
+conjunto de entrenamiento mientras que el color naranja representa esto en el conjunto de prueba. Lo ideal sería ver algo como una línea
+recta, lo cual parece suceder en el caso del conjunto de entrenamiento, pero no es tan notorio esto en el conjunto de prueba.
+
+Aquí podemos ver un gráfico de las predicciónes en naranja mientras que la verdadera serie está en azul. Se puede observar que el modelo para antes 
+de pandemia no se ajusta mal a la serie, sin embargo pasado ese tiempo no se ajusta de una forma deseable. El modelo de suavizamiento exponencial
+dio mejores resultados.
+
+Recordemos que esto es con la serie sin tendencia por diferenciación ordinaria, por lo que tendremos que volver a nuestra serie original para poder
+comparar el error cuadrático medio de este modelo con los demás y para ver realmente las diferencias entre las predicciones y los verdaderos valores.
+
+--- Gráfico serie re escalada y sus predicciones
+
+"Interpretarlo de acuerdo al árbol presente, si se ajusta medio bien o si se ajusta muy mal." 
+
+En este último gráfico tenemos la serie original en azul y en rojo tenemos la serie original hasta la parte de prueba y luego sus respectivas 
+predicciones, debido a que lo que nos interesa es el ECM de las predicciones en el periodo de prueba, dandonos un ECM de "..."
+
+--- Segunda parte: Creación del árbol con la serie original
+
+Se siguió el mismo proceso que en la primera parte, primero creamos un dataframe con los inputs y outputs de interés y dividimos los datos en
+entrenamiento, validación y prueba. 211 datos para entrenamiento y 53 para prueba ya que no perdemos un dato al no extraer la tendencia.
+
+De nuevo primero creamos un árbol sin especificar la profundidad, luego exploramos distintas profundidades, en esta iteración y utilizando como 
+semilla "...", la mejor profundidad es "...", por lo que procedemos a crear el árbol juntando entrenamiento y validación con esta profundidad. 
+En este caso nos dice otra profundidad, por lo que vamos a crear un árbol con esta profundidad, pero también haremos la prueba con un árbol utilizando 
+la profundidad de la primera parte.
+
+--- Gráfico predicciones VS verdaderos valores
+
+Vemos que se logra esbozar una línea recta para el caso del conjunto de entrenamiento, sin embargo para el conjunto de prueba no sucede esto. Para una
+profundidad pequeña esto es menos notorio, sin embargo se pueden ver indicios debido a que para algunos valores el modelo subestima notoriamente la
+serie, concretamente en los puntos naranjas que están distanciados de los demás.
+
+--- Gráfico serie re escalada y sus predicciones
+
+Como la serie no ha sido transformada de ninguna manera, no tenemos que reescalarla, por lo que los siguientes gráficos muestran directamente la serie
+original y la serie que predice el modelo. Vemos que captura relativamente bien el comportamiento de la serie original pre pandemia, pero no logra
+capturar el pico y los años subsecuentes de la mejor manera, gráficamente sigue sin ser mejor que el suavizamiento exponencial.
+
+Tenemos este último gráfico que representa lo mismo que en la primera parte, llevandonos a un ECM de "...".
+
+Ahora repetimos este mismo proceso pero para la profundidad de la primera parte, llegando a casi las mismas conclusiones, podemos ver esbozarse una
+línea recta en el gráfico de predicciones Vs valores reales con el conjunto de entrenamiento mientras que para el conjunto de prueba no sucede igual. 
+Vemos que el modelo captura el comportamiento de la serie pre pandemia pero pasado el pico le cuesta capturar de manera correcta el comportamiento de
+la serie, y por último tenemos este gráfico que nos lleva a un ECM de "...".
+
+Aunque no son mejores que el modelo de suavizamiento exponencial, el mejor árbol en este caso fue "...".
 
 -----------------------------------Redes multicapa----------------------------------
 
+Para este modelamiento, en la creación de los inputs, se probaron varios casos. Primero intentamos modelar la serie utilizando únicamente los 12 
+retardos del tiempo t, luego hicimos esto agregando covariables que explicaran la estacionalidad. Primero intentamos explicando esta estacionalidad
+a través de componentes de Fourier, y luego a traves de variables tipo dummy. Lo que mejor dio resultados fueron los componentes de Fourier, por lo 
+que veremos qué fue lo que se obtuvo con estos componentes.
 
+Vemos la creación de inputs tenemos los 12 retardos, los componente de senos y de cosenos y nuestro output que es el tiempo t. Recordemos de nuevo que
+tenemos interés únicamente en la predicción un paso adelante.
+
+--- División de datos y estandarización
+
+Se utilizó la misma distribución anterior para dividir los datos en entrenamiento, validación y prueba, que es 70%, 10% y 20%. Además de esto,
+estandarizamos las covariables utilizando minmaxscaler, pero no hicimos esto para la variable respuesta.
+
+--- Red neuronal con una sola capa
+
+Para este primer acercamiento a las redes neuronales multicapa, primero ajustamos redes neuronales de una sola capa para ver su comportamiento. Esto
+se hizo para las tres funciones de activación, relu, lineal y tangente hiperbólico. Para la cantidad de capas, en este caso sólo usaremos una capa
+oculta de 64 nodos. Como métrica seguiremos utilizando el ECM. Se usará el optimizador Adam y 50 épocas junto a un tamaño de lote = 12, por lo que
+tendremos 185/12 lotes, 16 concretamente. Ajustamos los modelos y obtenemos lo siguiente.
+
+--- Modelo de una capa, función Relu
+
+Primero tenemos un gráfico del comportamiento de la pérdida cuadrática en validación y en entrenamiento a través de las épocas. En ambos casos vemos
+que a través de las épocas la función de pérdida se va reduciendo hasta el punto en que se acerca a cero. El ECM de este modelo en el conjunto de 
+prueba es de 14.4766. Por último para este modelo, tenemos el gráfico de valores reales Vs predicciones. Vemos que no logra predecir el pico de la 
+pandemia, sin embargo trata de ajustarlo, y luego se ajusta medianamente bien a la serie.
+
+--- Modelo de una capa, función lineal
+
+Vemos el mismo comportamiento en la función de pérdida, aunque en las últimas épocas entrenamiento y validación se intentan solapar un poco más que en
+el caso anterior. Obtenemos un ECM de 11.0160 en el conjunto de prueba. Por último tenemos el gráfico de valores reales Vs predicciones. Vemos que 
+tampoco logra predecir el pico de la pandemia pero en cuanto al ECM se redujo un poco.
+
+--- Modelo de una capa, función tangente hiperbólico
+
+En este último modelo el comportamiento en la función de pérdida mejora considerablemente en el conjunto de validación casi solapandose la pérdida en
+ambos conjuntos en las últimas épocas. El ECM de este modelo es 9.0308, el cual es el menor de estos 3. Por último vemos el gráfico de valores reales
+Vs predicciones. En este último visualmente notamos que no intenta ajustar tanto el pico sino que simula un comportamiento más suave, lo que al 
+parecer redujo el ECM considerablemente respecto a los anteriores dos modelos. Aun así, sigue resaltando el modelo de suavizamiento exponencial,
+siendo el mejor entre los que se han probado.
+
+--- Red neuronal con múltiples capas
+
+Las anteriores tres redes contaban con una sola capa, en la siguiente red se contará con tres capas ocultas, de 64, 32 y 16 nodos respectivamente.
+Para la estimación de hiperparámetros, se utilizó un for para probar entre las distintas combinaciones de funciones de activacion, mientras que el 
+número de capas y la cantidad de nodos se mantuvo constante. En la práctica se suele utilizar una misma función de activación para cada capa debido 
+al costo computacional de ajustar tantas redes, sin embargo, esto es lo recomendable y como ejercicio resultó muy fructífero, los resultados fueron
+los siguientes.
+
+Debido a que la inicialización es aleatoria, no siempre resultaba la misma combinación de funciones de activación cada vez que la celda se ejecutaba,
+sin embargo, la combinación que más se repitió y que nos entrego muy buenos resultados respecto a las redes anteriores fue relu para la primera capa
+oculta, tangente hiperbólico para la segunda capa oculta, relu para la tercera capa oculta y relu para la capa de salida. Se utilizó la misma 
+cantidad de épocas y tamaño de lote, además del mismo optimizador. 
+
+--- Interpretación de gráficos
+
+En este gráfico del comportamiento de la pérdida en el conjunto de entrenamiento y validación, vemos el mismo comportamiento que en las últimas redes,
+llegando a solaparse en las últimas épocas y siendo muy cercano a 0. El ECM del conjunto de pruebapara esta red recurrente fue de 6.5467, una mejora 
+importante respecto a la primer red neuronal utilizando función relu, siendo menos de la mitad del ECM de esa primera red. La disminución en 
+porcentaje del ECM respecto a las anteriores redes es de 54.2, 39.7 y 27.7 para las redes con funcion de activación relu, lineal y tangente
+hiperbólico respectivamente. Para esta red tenemos por último el gráfico de los valores reales Vs las predicciones. Se nota que aunque no captura el
+pico de la pandemia, para el resto de la serie se ajusta relativamente bien. Sin embargo, sigue sin ser el mejor modelo, aunque es uno muy competente.
+
+--- Búsqueda de hiperparámetros utilizando Grid Search
+
+Para terminar esta parte, se utilizó Gird Search para buscar los hiperparámetros en caso de que los que usamos anteriormente no sean los mejores. Como
+se dijo, lo ideal es hacer una búsqueda exhaustiva de estos hiperparámetros, sin embargo, esto demanda mucha potencia computacional, por lo que
+Grid Search puede ser una alternativa. Para esta búsqueda se hicieron 20 épocas, con el tamaño de lote por defecto que es 32, y probando entre
+funciones de activación relu y tangente hiperbólico, número de capas 1 o 2 y cantidad de nodos 32 o 64 y la capa de salida con función de activación
+lineal.
+
+Luego de esto se llamó al mejor modelo de esta búsqueda, teniendo un ECM de 26.3601. El gráfico de valores reales Vs predicciones es el siguiente.
+Se observa que aunque logra de alguna manera capturar la tendencia de la serie, no captura su media, subestimando notablemente las predicciones, 
+además de no ajustarse realmente bien al comportamiento de la serie original. El gráfico del error de predicción para las 53 observaciones nos muestra
+como para la mayoría de observaciones se alejo por 2-4 unidades, y para la pandemia se alejo demasiado del verdadero valor, por casi 14 unidades.
+Este modelo hace pronósticos muy malos respecto a los anteriores, siendo el peor hasta ahora.
+
+Cabe resaltar que esto no resulta raro debido a la complejidad de las anteriores redes, pues se utilizaron más épocas y tamaños de lotes más pequeños
+para ser estimadas, además de que en el caso de la red multicapa, se utilizó una capa más, complejizando el modelamiento.
 
 -----------------------------------Redes recurrentes--------------------------------
 
