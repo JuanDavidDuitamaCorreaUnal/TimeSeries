@@ -112,12 +112,87 @@ Por último está la implementación del Rolling utilizando funciones, mas como 
 
 ------------------------------------Árboles-----------------------------------------
 
+Introducción a árboles
 
+Para esta parte de árboles de decisión, solo se realizará el modelo mediante el uso de lo datos originales. Creamos los inputs y outputs, 
+por lo que tendremos un dataframe que contiene los 4 primeros retardos y como output el tiempo t, o sea, haremos la predicción
+un paso adelante.
+
+--- División de los datos 
+
+Dividimos los datos en entrenamiento, validación y prueba, teniendo como porcentajes un 70% de los datos para entrenamiento, el siguiente 18% de 
+datos para validación y el 12% restante de los datos para prueba. Donde 51 datos son de entrenamiento, 12 datos son de validación y 9 son los datos de testeo
+
+--- Creación del árbol con la serie original
+
+Primero creamos un árbol sin especificar la profundidad, luego exploramos distintas profundidades, en esta iteración la mejor profundidad es 
+5, por lo que procedemos a crear el árbol juntando entrenamiento y validación con esta profundidad. Si bien, las profundidades siguientes muestran el mismo ECM que
+la profundidad 5, se escoge esta, ya que hasta este grado de profundidad, se alcanza a tomar la totalidad de los datos.
+
+--- Gráfico predicciones VS verdaderos valores
+
+Vemos que se logra esbozar una línea recta para el caso del conjunto de entrenamiento, sin embargo para el conjunto de prueba no sucede esto y las
+predicciones parecen muy dispersas. Se pueden ver indicios de que para algunos valores el modelo subestima mas la serie, además, los valores de testeo, se mantienen muy dispersos.
+Ya con el gráfico completo, se puede visualizar un sobreajuste para los datos de entrenamiento y validación. Sin embargo, como la validación toma el periodo de pandemia, al momento
+de predecir los datos de testeo, se ve que el modelo toma una postura muy conservadora al predecir una recta constante. El modelo ni se esfuerza en predecir el comportamiento del PIB.
 
 -----------------------------------Redes multicapa----------------------------------
 
+Para este modelamiento, en la creación de los inputs, se probaron varios casos. Primero intentamos modelar la serie utilizando la red de una capa, luego se ajustará a una red multicapa y,
+finalmente, se mostrarán los mejores modelos; explicando en cada uno los gráficos de las predicciones y de los verdaderos valores.
 
+--- Red neuronal con una sola capa
+
+Para este primer acercamiento a las redes neuronales multicapa, primero ajustamos redes neuronales de una sola capa para ver su comportamiento. Esto
+se hizo para la función de activación lineal. Para la cantidad de capas, en este caso sólo usaremos una capa
+oculta de 64 nodos. Como métrica seguiremos utilizando el ECM. Se usará el optimizador Adam y 50 épocas junto a un tamaño de lote = 1, por lo que
+tendremos 51/1 lotes. El tamaño de los lotes se determina en 1, dado que la serie original no cuenta con la cantidad suficiente de datos para agrupar.
+
+--- Modelo de una capa, función lineal
+
+Primero tenemos un gráfico del comportamiento de la pérdida cuadrática en validación y en entrenamiento a través de las épocas. En este caso, la pérdida en 
+los datos de testeo genera una brecha bastante grande respecto a la de los datos de entrenamiento. Por lo tanto, el modelo es pésimo para poder predecir el comportamiento
+del PIB. Esto también se justifica en su ECM, donde el valor es bastante alto, a comparación del obtenido por suavizamiento exponencial (51583983616). Así como en su predicción
+donde no se esfuerza en predecir la serie.
+
+--- Red neuronal con múltiples capas
+
+En la siguiente red se contará con tres capas ocultas, de 64, 32 y 16 nodos respectivamente. En esta red se utilizarán funciones de activación lineal y Relu.
+Para la estimación de hiperparámetros, el número de capas y la cantidad de nodos se mantuvo constante. Se realizó exactamente el mismo procedimiento que con redes de una sola capa
+donde mantenemos 50 épocas de tamaño de lote 1.
+
+
+--- Interpretación de gráficos
+
+En este gráfico del comportamiento de la pérdida en el conjunto de entrenamiento y validación, vemos que el comportamiento de esta red trata de acercarse en el valor de sus pérdidas
+llegando a 0. El ECM del conjunto de prueba para esta red recurrente fue de 3423324416, una mejora 
+considerable respecto a la primer red neuronal utilizando función lineal, siendo menos de la mitad del ECM de esa primera red. 
+En el gráfico se observa que las predicciones sobreestiman los valores del PIB, aunque la pandemia no impacta en gran medida, se mantiene una gran brecha entre las predicciones y los datos reales.
+
+--- Búsqueda de hiperparámetros utilizando Grid Search
+
+Para terminar esta parte, se utilizó Gird Search para buscar los hiperparámetros. Para esta búsqueda se hicieron 20 épocas, con el tamaño de lote por defecto que es 32, y probando entre
+funciones de activación relu y tangente hiperbólico, número de capas 1 o 2 y cantidad de nodos 32 o 64 y la capa de salida con función de activación
+lineal. Tal y como se utilizó en el índice de desempleo.
+
+Luego de esto se muestran los 10 mejores modelos arrojados en este caso. Entonces, se llamó al mejor modelo de esta búsqueda, teniendo un ECM de 53415380000, lo cual es un ECM bastante 
+grande y esto ya nos da como referencia que la capacidad predictiva del modelo es muy pobre. De hecho, al interpretar el gráfico de valores reales Vs predicciones se puede notar que el mejor modelo no se esfuerza en predecir los valores del PIB, generando esa pérdida cuadrática bastante grande.
 
 -----------------------------------Redes recurrentes--------------------------------
 
+Utilizamos tres tipos de redes neuronales recurrentes, una normal, una GRU y una LSTM. Asimismo, al igual que en modelamientos anteriores, utilizamos el 80% de los datos para el entrenamiento y el 20% restante para probar la capacidad predictiva. No requerimos conjunto de validación ya que los hiperparámetros se calcularon mediante validación cruzada.
 
+Estandarizamos nuestra serie de tiempo y creamos los insumos para nuestras redes, utilizamos los 4 retardos como covariables. Teniendo así
+56 datos para entrenamiento y 12 para prueba.
+
+Se modeló el PIB utilizando únicamente los 4 retardos como covariables. Definimos 100 épocas, encontramos los hiperparámetros y entrenamos la red, 
+para finalmente encontrar el error cuadrático medio.
+Obteniendo así 0.714201 para la red normal, 3.2635 para la GRU y 5.1483 para la LSTM, recordemos que estos no son los verdaderos errores cuadráticos
+medios, ya que fueron calculados con los pronósticos hechos para el PIB estandarizad0. Más adelante hallaremos los verdaderos MSE.
+
+Este primer gráfico muestra el comportamiento de la red en el conjunto de entrenamiento, y este segundo el comportamiento en el conjunto de prueba,
+podemos ver que la red RNN (línea azul) se acerca más al valor del PIB; sin embargo, la predicción es conservadora y no se atreve a realizar predicciones aparte de una línea recta; mientras que el GRU y el LSTM predicen de forma deficiente el comportamiento del PIB
+
+Por último, compararemos la verdadera tasa de desempleo con los pronósticos reescalados en los conjuntos de prueba, además de los verdaderos MSE.
+El modelo que mejor MSE tiene, ya con los datos originales y pronósticos reescalados sigue siendo la red RNN, aunque el MSE en comparación de los otros es el mas bajo (1697414571.7),
+solo se mantiene una línea recta, subestimando los valores reales del PIB. Mientras que GRU y LSTM se mantienen como los modelos mas deficientes.
