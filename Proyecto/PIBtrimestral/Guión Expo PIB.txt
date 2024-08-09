@@ -25,13 +25,11 @@ estacionario todavía.
 
 Ander: A continuación, vamos a comprobar si vale la pena realizar una transformación de los datos, para ello, 
 vamos a hallar el valor de lambda que nos permite dar dicha conclusión. Tal y como pueden observar el valor de lambda es cercano a 1, 
-así como el valor de 0 se encuentra incluido en el  intervalo de confianza. 
-Por lo que no va a ser necesario realizar una transformación de los datos.
+por lo que no hay que realizar esta transformación. 
 
 --------------------Extracción de tendencia-------------------------
 
-Duitama: Empezaremos a retirar la tendencia de nuestra serie, implementamos 4 métodos, extracción por un modelo de regresión lineal simple, 
-modelo no paramétrico, diferencia ordinaria y promedios móviles. 
+Duitama: Empezaremos a retirar la tendencia de nuestra serie, implementamos 2 métodos, extracción por un modelo de regresión lineal simple y diferencia ordinaria.
 
 Duitama: El modelo lineal no fue adecuado ya que este no captura el comportamiento de la pandemia, 
 la serie resultante no oscila alrededor de un solo valor.Esto lo pueden observar en el siguiente gráfico. 
@@ -195,7 +193,9 @@ original, hasta un punto en sonde se intersectan, luego de ahí en adelante la s
 
 -----------------------------------Redes recurrentes--------------------------------
 
-Ander: Utilizamos tres tipos de redes neuronales recurrentes, una normal, una GRU y una LSTM. Asimismo, al igual que en modelamientos anteriores, utilizamos el 80% de los datos para el entrenamiento y el 20% restante para probar la capacidad predictiva. No requerimos conjunto de validación ya que los hiperparámetros se calcularon mediante validación cruzada.
+Ander: Utilizamos tres tipos de redes neuronales recurrentes, una normal, una GRU y una LSTM. Asimismo, al igual que en modelamientos anteriores, utilizamos 
+el 80% de los datos para el entrenamiento y el 20% restante para probar la capacidad predictiva. No requerimos conjunto de validación ya que los hiperparámetros 
+se calcularon mediante validación cruzada.
 
 Ander: Estandarizamos nuestra serie de tiempo y creamos los insumos para nuestras redes, utilizamos los 4 retardos como covariables. Teniendo así
 56 datos para entrenamiento y 12 para prueba.
@@ -206,8 +206,9 @@ Obteniendo así 0.714201 para la red normal, 3.2635 para la GRU y 5.1483 para la
 medios, ya que fueron calculados con los pronósticos hechos para el PIB estandarizad0. Más adelante hallaremos los verdaderos MSE.
 
 Anderson: Este primer gráfico muestra el comportamiento de la red en el conjunto de entrenamiento, y este segundo el comportamiento en el conjunto de prueba,
-podemos ver que la red RNN (línea azul) se acerca más al valor del PIB; sin embargo, la predicción es conservadora y no se atreve a realizar predicciones aparte de una línea recta; mientras que el GRU y el LSTM predicen de forma deficiente el comportamiento del PIB
+podemos ver que la red RNN (línea azul) se acerca más al valor del PIB; sin embargo, la predicción es conservadora y no se atreve a realizar predicciones aparte de 
+una línea recta; mientras que el GRU y el LSTM predicen de forma deficiente el comportamiento del PIB.
 
 Anderson: Por último, compararemos la verdadera tasa de desempleo con los pronósticos reescalados en los conjuntos de prueba, además de los verdaderos MSE.
-El modelo que mejor MSE tiene, ya con los datos originales y pronósticos reescalados sigue siendo la red RNN, aunque el MSE en comparación de los otros es el mas bajo (1697414571.7),
-solo se mantiene una línea recta, subestimando los valores reales del PIB. Mientras que GRU y LSTM se mantienen como los modelos mas deficientes.
+El modelo que mejor MSE tiene, ya con los datos originales y pronósticos reescalados sigue siendo la red RNN, aunque el MSE en comparación de los otros es el mas 
+bajo (1697414571.7), solo se mantiene una línea recta, subestimando los valores reales del PIB. Mientras que GRU y LSTM se mantienen como los modelos mas deficientes.
