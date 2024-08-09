@@ -2,12 +2,12 @@
 ------------------------------------Descripción serie del desempleo mensual en Colombia------------------------------------------------
 ---------------------------------------------------------------------------------------------------------------------------------------
 
-Buen día, el día de hoy les presentaremos el análisis hecho por Ander Cristancho, Anderson Guarín y Juan David Duitama sobre la tasa de desempleo
+Duitama: Buen día, el día de hoy les presentaremos el análisis hecho por Ander Cristancho, Anderson Guarín y Juan David Duitama sobre la tasa de desempleo
 en Colombia desde enero de 2001 hasta diciembre de 2023, tasa medida mensualmente.
 
 -----------------Primer gráfico de la serie-------------------
 
-En este primer gráfico podemos observar el comportamiento de la tasa de desempleo a lo largo de estos 23 años. En un primer vistazo podemos
+Duitama: En este primer gráfico podemos observar el comportamiento de la tasa de desempleo a lo largo de estos 23 años. En un primer vistazo podemos
 observar este pico correspondiente a la pandemia, dándose el punto máximo en abril de 2020. Antes de la pandemia (desde 2001 hasta 2019) se 
 presentaba un comportamiento decreciente, es decir, el desempleo disminuía con el paso de los años. Después del año 2022 el comportamiento 
 de la tasa de desempleo es similar al tenido previo a la pandemia.
@@ -18,19 +18,19 @@ para incrementar nuevamente finalizando el año y repetirse nuevamente este patr
 
 -------------Primer gráfico de autocorrelación---------------
 
-Este es un primer gráfico de autocorrelación, sin embargo, no es válido puesto que nuestra serie de tiempo no tiene un comportamiento estacionario
+Ander: Este es un primer gráfico de autocorrelación, sin embargo, no es válido puesto que nuestra serie de tiempo no tiene un comportamiento estacionario
 todavía.
 
 ---------------Transformación de Box-Cox---------------------
 
-En los análisis posteriores no implementamos la estabilización de la varianza ya que a pesar de que el intervalo de confianza sugería hacer una
+Duitama: En los análisis posteriores no implementamos la estabilización de la varianza ya que a pesar de que el intervalo de confianza sugería hacer una
 transformación, obtuvimos una serie de tiempo con un comportamiento más heterogéneo. Por lo que no la usaremos.
 
 Nuevamente un gráfico de autocorrelación que no es válido.
 
 --------------------Extracción de tendencia-------------------------
 
-Empezaremos a retirar la tendencia de nuestra serie, implementamos 4 métodos, extracción por un modelo de regresión lineal simple, modelo
+Anderson: Empezaremos a retirar la tendencia de nuestra serie, implementamos 4 métodos, extracción por un modelo de regresión lineal simple, modelo
 no paramétrico, diferencia ordinaria y promedios móviles. 
 
 El modelo lineal no fue adecuado ya que este no captura el comportamiento de la pandemia, la serie resultante no oscila alrededor de un solo valor. 
@@ -44,31 +44,31 @@ Realizando nuevamente los gráficos de autocorrelación encontramos un patrón d
 
 ----------------Explorando relaciones lineales--------------------
 
-Recordemos que estamos trabajando con la serie cuya tendencia fue extraída por diferencia ordinaria, estos gráficos de dispersión entre los 
+Duitama: Recordemos que estamos trabajando con la serie cuya tendencia fue extraída por diferencia ordinaria, estos gráficos de dispersión entre los 
 retardos a primer vistazo no evidencian una relación, a excepción del retardo 12 que muestra una relación lineal considerable. El valor del
 coeficiente de correlación lineal es 0,6.
 
 --------------------Gráfico de autocorrelación parcial-------------------
 
-Yo digo que lo quitemos
+Duitama: La autocorrelación parcial indica que los retardos 3, 6, 8 y 9 no parecen aportar información relevante.
 
 
 -------------------------Detección de estacionalidad---------------------
 
-Estos 4 gráficos indican que en enero suelen presentarse las tasas de desempleo más altas por año. En este primer gráfico de calor, los meses
+Ander: Estos 4 gráficos indican que en enero suelen presentarse las tasas de desempleo más altas por año. En este primer gráfico de calor, los meses
 de enero son los más oscuros. Este gráfico de las subseries por mes, también indica que la tasa de desempleo en enero "oscila" alrededor de un
 valor mayor que los demás meses. Estos boxplots revelan lo mismo, al igual que el gráfico de las densidades hechas vía kernel, 
 la densidad de enero está ubicada más a la derecha.
 
 --------------------Periodo de la serie--------------------------
 
-El periodograma concluye que el periodo es 3, sin embargo vemos que hay picos en 0.25, 0.16 y uno más pequeño en 0.083, estas frecuencias 
+Anderson: El periodograma concluye que el periodo es 3, sin embargo vemos que hay picos en 0.25, 0.16 y uno más pequeño en 0.083, estas frecuencias 
 representan los periodos 4, 6 y 12 respectivamente. Sabemos que la serie es mensual, por lo que no es raro que el periodograma indique 
 divisores del verdadero periodo, que es 12.
 
 ------------------------Extracción de la estacionalidad--------------------------
 
-Para extraer la estacionalidad implementamos dos métodos, mediante variables dummy y componentes de Fourier, utilizamos 1, 2, 3 y 4 componentes de
+Anderson: Para extraer la estacionalidad implementamos dos métodos, mediante variables dummy y componentes de Fourier, utilizamos 1, 2, 3 y 4 componentes de
 Fourier.
 
 Este primer gráfico muestra, además de nuestra serie con diferencia ordinaria, las estimaciones de la componente estacional.
@@ -80,21 +80,21 @@ autocorrelación, especialmente en el gráfico de la serie cuya tendencia fue ex
 
 --------------------------------Suavizamiento exponencial------------------------------
 
-El suavizamiento exponencial es un modelo que contiene 3 parámetros, dos relacionados a la estimación de la componente de tendencia, y el 
+Duitama: El suavizamiento exponencial es un modelo que contiene 3 parámetros, dos relacionados a la estimación de la componente de tendencia, y el 
 tercero a la componente de estacionalidad.El siguiente modelo tendrá las tres componentes, por lo tanto, para evaluar la capacidad predictiva 
 del modelo, utilizando la predicción a un paso, emplearemos el 80% de la serie como conjunto de entrenamiento y el 20% restante como prueba. 
 Es decir, el periodo de entrenamiento corresponde a los primeros 221 meses, los cuales correponden a enero de 2001 hasta mayo de 
 2019, por otro lado, el periodo de prueba corresponde a junio de 2019 hasta diciembre de 2023. Recordemos que trabajaremos la serie original.
 	
 
-El primer paso es encontrar las estimaciones de los parámetros utilizando el conjunto de entrenamiento. Obtenemos una estimación de la componente
+Duitama: El primer paso es encontrar las estimaciones de los parámetros utilizando el conjunto de entrenamiento. Obtenemos una estimación de la componente
 de nivel alpha de 0.3702, de pendiente beta igual a 0.0314, de estacionalidad gamma igual a 0.3471.
 
-Posterior a esto hacemos el rolling manualmente, nuestro horizonte de pronóstico es igual a 1, recordemos que estamos evaluando la predicción un
+Ander: Posterior a esto hacemos el rolling manualmente, nuestro horizonte de pronóstico es igual a 1, recordemos que estamos evaluando la predicción un
 paso adelante, modificaremos nuestra ventana en cada iteración, añadiendo un mes en cada iteración, ajustamos el modelo con los parámetros
 calculados en entrenamiento y realizamos el pronóstico. Por último, calculamos el error cuadrático medio, el cual nos da 3.7479.
 
-En este gráfico comparamos los pronósticos con la verdadera tasa de desempleo en este preiodo. Obteniendo resultados bastante buenos teniendo en
+Ander: En este gráfico comparamos los pronósticos con la verdadera tasa de desempleo en este preiodo. Obteniendo resultados bastante buenos teniendo en
 cuenta que el conjunto de prueba incluye la pandemia.
 Por último está la implementación del Rolling utilizando funciones, nos da los mismos resultados.	
 
@@ -107,115 +107,115 @@ Por último está la implementación del Rolling utilizando funciones, nos da lo
 
 --- Introducción a árboles
 
-Para esta parte de árboles de decisión, podemos dividir el modelamiento en dos partes, un árbol modelando la serie con la tendencia extraída y un 
+Anderson: Para esta parte de árboles de decisión, podemos dividir el modelamiento en dos partes, un árbol modelando la serie con la tendencia extraída y un 
 árbol modelando la serie original. Recordemos que estaremos utilizando la serie con la tendencia extraída aplicando diferenciación ordinaria. Creamos
 los inputs y outputs, por lo que tendremos un dataframe que contiene los 12 primeros retardos y como output el tiempo t, o sea, haremos la predicción
 un paso adelante.
 
 --- División de los datos 
 
-Dividimos los datos en entrenamiento, validación y prueba, teniendo como porcentajes un 70% de los datos para entrenamiento,el siguiente 10% de 
+Anderson: Dividimos los datos en entrenamiento, validación y prueba, teniendo como porcentajes un 70% de los datos para entrenamiento,el siguiente 10% de 
 datos para validación y el 20% restante de los datos para prueba, 211 datos para entrenamiento y 52 para prueba (debido a que perdimos un dato por
 la diferenciación ordinaria.)
 
 --- Primera parte: Creación del árbol con tendencia extraida
 
-Primero creamos un árbol sin especificar una profundidad, para el que tenemos este ECM el cual cabe aclarar, no está en la escala original, vemos que
+Anderson: Primero creamos un árbol sin especificar una profundidad, para el que tenemos este ECM el cual cabe aclarar, no está en la escala original, vemos que
 sobreajusta en entrenamiento pues el R^2 es 1, sin embargo en validación no llega a 0.5, para aplacar esto, probaremos distintas profundidades, de 2 
-a 12, con el fin de ver si hay una profundidad mejor. En esta iteración, la mejor profundidad es 6, por lo que procedemos a crear el árbol juntando entrenamiento y validación
-con esta profundidad. 
+a 12, con el fin de ver si hay una profundidad mejor. En esta iteración, la mejor profundidad es 6, por lo que procedemos a crear el árbol juntando 
+entrenamiento y validación con esta profundidad. 
 
 --- Gráfico predicciones VS verdaderos valores
 
-Este primer gráfico nos muestra las predicciones en el eje X versus los verdaderos valores en el eje Y. El color azul representa esto en el 
+Anderson: Este primer gráfico nos muestra las predicciones en el eje X versus los verdaderos valores en el eje Y. El color azul representa esto en el 
 conjunto de entrenamiento mientras que el color naranja representa esto en el conjunto de prueba. Lo ideal sería ver algo como una línea
 recta, lo cual parece suceder en el caso del conjunto de entrenamiento, pero no es tan notorio esto en el conjunto de prueba. Esto puede ser un
 indicativo de sobreajuste, sin embargo tenemos que ver realmente cómo se comportan las predicciones para ver si esto es razonable.
 
-Aquí podemos ver un gráfico de las predicciónes en naranja mientras que la verdadera serie está en azul. Se puede observar que el modelo para antes 
+Anderson: Aquí podemos ver un gráfico de las predicciónes en naranja mientras que la verdadera serie está en azul. Se puede observar que el modelo para antes 
 de pandemia se ajusta muy bien a la serie, sin embargo pasado ese tiempo no se ajusta de una forma tan deseable. El modelo de suavizamiento 
 exponencial dio mejores resultados.
 
-Recordemos que esto es con la serie sin tendencia por diferenciación ordinaria, por lo que tendremos que volver a nuestra serie original para poder
+Anderson: Recordemos que esto es con la serie sin tendencia por diferenciación ordinaria, por lo que tendremos que volver a nuestra serie original para poder
 comparar el error cuadrático medio de este modelo con los demás y para ver realmente las diferencias entre las predicciones y los verdaderos valores.
 
 --- Gráfico serie re escalada y sus predicciones
 
-En este último gráfico tenemos la serie original en azul y en rojo tenemos la serie original hasta la parte de prueba y luego sus respectivas 
+Anderson: En este último gráfico tenemos la serie original en azul y en rojo tenemos la serie original hasta la parte de prueba y luego sus respectivas 
 predicciones, debido a que lo que nos interesa es el ECM de las predicciones en el periodo de prueba. Podemos ver que subestima notoriamente el pico
 de la pandemia y luego parece acercarse un poco a los datos reales pasado ese pico. El ECM de este modelo es de 16.1133, lo cual no es muy bueno
 comparandolo con el modelo de suavizamiento exponencial.
 
 --- Segunda parte: Creación del árbol con la serie original
 
-Se siguió el mismo proceso que en la primera parte, primero creamos un dataframe con los inputs y outputs de interés y dividimos los datos en
+Duitama: Se siguió el mismo proceso que en la primera parte, primero creamos un dataframe con los inputs y outputs de interés y dividimos los datos en
 entrenamiento, validación y prueba. 211 datos para entrenamiento y 53 para prueba ya que no perdemos un dato al no extraer la tendencia.
 
-De nuevo primero creamos un árbol sin especificar la profundidad, luego exploramos distintas profundidades, en esta iteración la mejor profundidad es 
+Duitama: De nuevo primero creamos un árbol sin especificar la profundidad, luego exploramos distintas profundidades, en esta iteración la mejor profundidad es 
 12, por lo que procedemos a crear el árbol juntando entrenamiento y validación con esta profundidad. En este caso nos dice otra profundidad a la de la
 primera parte, por lo que también se hará un árbol con la profundidad obtenida en la primera parte, para un total de dos árboles, con profundidad 12 y
 6 respectivamente.
 
 --- Gráfico predicciones VS verdaderos valores
 
-Vemos que se logra esbozar una línea recta para el caso del conjunto de entrenamiento, sin embargo para el conjunto de prueba no sucede esto y las
+Duitama: Vemos que se logra esbozar una línea recta para el caso del conjunto de entrenamiento, sin embargo para el conjunto de prueba no sucede esto y las
 predicciones parecen muy dispersas. Se pueden ver indicios de que para algunos valores el modelo subestima notoriamente la serie, concretamente en 
 los puntos naranjas que están mucho más arriba de la recta azul, indicando que el modelo subestima mucho a la serie en esas predicciones.
 
 --- Gráfico serie re escalada y sus predicciones
 
-Como la serie no ha sido transformada de ninguna manera, no tenemos que reescalarla, por lo que los siguientes gráficos muestran directamente la serie
+Duitama: Como la serie no ha sido transformada de ninguna manera, no tenemos que reescalarla, por lo que los siguientes gráficos muestran directamente la serie
 original y la serie que predice el modelo. Vemos que captura muy bien el comportamiento de la serie original pre pandemia, pero no logra
 capturar el pico y los años subsecuentes de la mejor manera, gráficamente sigue sin ser mejor que el suavizamiento exponencial.
 
-Tenemos este último gráfico que representa lo mismo que en la primera parte, llevandonos a un ECM de 10.7995.
+Duitama: Tenemos este último gráfico que representa lo mismo que en la primera parte, llevandonos a un ECM de 10.7995.
 
-Ahora repetimos este mismo proceso pero para la profundidad de la primera parte, llegando a casi las mismas conclusiones, podemos ver esbozarse una
+Duitama: Ahora repetimos este mismo proceso pero para la profundidad de la primera parte, llegando a casi las mismas conclusiones, podemos ver esbozarse una
 línea recta en el gráfico de predicciones Vs valores reales con el conjunto de entrenamiento mientras que para el conjunto de prueba no sucede igual. 
 Vemos que el modelo captura el comportamiento de la serie pre pandemia pero pasado el pico le cuesta capturar de manera correcta el comportamiento de
 la serie, y por último tenemos este gráfico que nos lleva a un ECM de 10.7434.
 
-Aunque no son mejores que el modelo de suavizamiento exponencial, el mejor árbol en este caso fue el árbol con profundidad 6 y sin extraer tendencia.
+Duitama: Aunque no son mejores que el modelo de suavizamiento exponencial, el mejor árbol en este caso fue el árbol con profundidad 6 y sin extraer tendencia.
 Aun así, el mejor modelo hasta ahora ha sido el modelo de suavizamiento exponencial.
 
 -----------------------------------Redes multicapa----------------------------------
 
-Para este modelamiento, en la creación de los inputs, se probaron varios casos. Primero intentamos modelar la serie utilizando únicamente los 12 
+Ander: Para este modelamiento, en la creación de los inputs, se probaron varios casos. Primero intentamos modelar la serie utilizando únicamente los 12 
 retardos del tiempo t, luego hicimos esto agregando covariables que explicaran la estacionalidad. Primero intentamos explicando esta estacionalidad
 a través de componentes de Fourier, y luego a traves de variables tipo dummy. Lo que mejor dio resultados fueron los componentes de Fourier, por lo 
 que veremos qué fue lo que se obtuvo con estos componentes.
 
-Vemos la creación de inputs tenemos los 12 retardos, los componente de senos y de cosenos y nuestro output que es el tiempo t. Recordemos de nuevo que
+Ander: Vemos la creación de inputs tenemos los 12 retardos, los componente de senos y de cosenos y nuestro output que es el tiempo t. Recordemos de nuevo que
 tenemos interés únicamente en la predicción un paso adelante.
 
 --- División de datos y estandarización
 
-Se utilizó la misma distribución anterior para dividir los datos en entrenamiento, validación y prueba, que es 70%, 10% y 20%. Además de esto,
+Ander: Se utilizó la misma distribución anterior para dividir los datos en entrenamiento, validación y prueba, que es 70%, 10% y 20%. Además de esto,
 estandarizamos las covariables utilizando minmaxscaler, pero no hicimos esto para la variable respuesta.
 
 --- Red neuronal con una sola capa
 
-Para este primer acercamiento a las redes neuronales multicapa, primero ajustamos redes neuronales de una sola capa para ver su comportamiento. Esto
+Ander: Para este primer acercamiento a las redes neuronales multicapa, primero ajustamos redes neuronales de una sola capa para ver su comportamiento. Esto
 se hizo para las tres funciones de activación, relu, lineal y tangente hiperbólico. Para la cantidad de capas, en este caso sólo usaremos una capa
 oculta de 64 nodos. Como métrica seguiremos utilizando el ECM. Se usará el optimizador Adam y 50 épocas junto a un tamaño de lote = 12, por lo que
 tendremos 185/12 lotes, 16 concretamente. Ajustamos los modelos y obtenemos lo siguiente.
 
 --- Modelo de una capa, función Relu
 
-Primero tenemos un gráfico del comportamiento de la pérdida cuadrática en validación y en entrenamiento a través de las épocas. En ambos casos vemos
+Ander: Primero tenemos un gráfico del comportamiento de la pérdida cuadrática en validación y en entrenamiento a través de las épocas. En ambos casos vemos
 que a través de las épocas la función de pérdida se va reduciendo hasta el punto en que se acerca a cero. El ECM de este modelo en el conjunto de 
 prueba es de 14.4766. Por último para este modelo, tenemos el gráfico de valores reales Vs predicciones. Vemos que no logra predecir el pico de la 
 pandemia, sin embargo trata de ajustarlo, y luego se ajusta medianamente bien a la serie.
 
 --- Modelo de una capa, función lineal
 
-Vemos el mismo comportamiento en la función de pérdida, aunque en las últimas épocas entrenamiento y validación se intentan solapar un poco más que en
+Ander: Vemos el mismo comportamiento en la función de pérdida, aunque en las últimas épocas entrenamiento y validación se intentan solapar un poco más que en
 el caso anterior. Obtenemos un ECM de 11.0160 en el conjunto de prueba. Por último tenemos el gráfico de valores reales Vs predicciones. Vemos que 
 tampoco logra predecir el pico de la pandemia pero en cuanto al ECM se redujo un poco.
 
 --- Modelo de una capa, función tangente hiperbólico
 
-En este último modelo el comportamiento en la función de pérdida mejora considerablemente en el conjunto de validación casi solapandose la pérdida en
+Ander: En este último modelo el comportamiento en la función de pérdida mejora considerablemente en el conjunto de validación casi solapandose la pérdida en
 ambos conjuntos en las últimas épocas. El ECM de este modelo es 9.0308, el cual es el menor de estos 3. Por último vemos el gráfico de valores reales
 Vs predicciones. En este último visualmente notamos que no intenta ajustar tanto el pico sino que simula un comportamiento más suave, lo que al 
 parecer redujo el ECM considerablemente respecto a los anteriores dos modelos. Aun así, sigue resaltando el modelo de suavizamiento exponencial,
@@ -223,20 +223,20 @@ siendo el mejor entre los que se han probado.
 
 --- Red neuronal con múltiples capas
 
-Las anteriores tres redes contaban con una sola capa, en la siguiente red se contará con tres capas ocultas, de 64, 32 y 16 nodos respectivamente.
+Ander: Las anteriores tres redes contaban con una sola capa, en la siguiente red se contará con tres capas ocultas, de 64, 32 y 16 nodos respectivamente.
 Para la estimación de hiperparámetros, se utilizó un for para probar entre las distintas combinaciones de funciones de activacion, mientras que el 
 número de capas y la cantidad de nodos se mantuvo constante. En la práctica se suele utilizar una misma función de activación para cada capa debido 
 al costo computacional de ajustar tantas redes, sin embargo, esto es lo recomendable y como ejercicio resultó muy fructífero, los resultados fueron
 los siguientes.
 
-Debido a que la inicialización es aleatoria, no siempre resultaba la misma combinación de funciones de activación cada vez que la celda se ejecutaba,
+Ander: Debido a que la inicialización es aleatoria, no siempre resultaba la misma combinación de funciones de activación cada vez que la celda se ejecutaba,
 sin embargo, la combinación que más se repitió y que nos entrego muy buenos resultados respecto a las redes anteriores fue relu para la primera capa
 oculta, tangente hiperbólico para la segunda capa oculta, relu para la tercera capa oculta y relu para la capa de salida. Se utilizó la misma 
 cantidad de épocas y tamaño de lote, además del mismo optimizador. 
 
 --- Interpretación de gráficos
 
-En este gráfico del comportamiento de la pérdida en el conjunto de entrenamiento y validación, vemos el mismo comportamiento que en las últimas redes,
+Ander: En este gráfico del comportamiento de la pérdida en el conjunto de entrenamiento y validación, vemos el mismo comportamiento que en las últimas redes,
 llegando a solaparse en las últimas épocas y siendo muy cercano a 0. El ECM del conjunto de pruebapara esta red recurrente fue de 6.5467, una mejora 
 importante respecto a la primer red neuronal utilizando función relu, siendo menos de la mitad del ECM de esa primera red. La disminución en 
 porcentaje del ECM respecto a las anteriores redes es de 54.2, 39.7 y 27.7 para las redes con funcion de activación relu, lineal y tangente
@@ -245,44 +245,44 @@ pico de la pandemia, para el resto de la serie se ajusta relativamente bien. Sin
 
 --- Búsqueda de hiperparámetros utilizando Grid Search
 
-Para terminar esta parte, se utilizó Gird Search para buscar los hiperparámetros en caso de que los que usamos anteriormente no sean los mejores. Como
+Ander: Para terminar esta parte, se utilizó Gird Search para buscar los hiperparámetros en caso de que los que usamos anteriormente no sean los mejores. Como
 se dijo, lo ideal es hacer una búsqueda exhaustiva de estos hiperparámetros, sin embargo, esto demanda mucha potencia computacional, por lo que
 Grid Search puede ser una alternativa. Para esta búsqueda se hicieron 20 épocas, con el tamaño de lote por defecto que es 32, y probando entre
 funciones de activación relu y tangente hiperbólico, número de capas 1 o 2 y cantidad de nodos 32 o 64 y la capa de salida con función de activación
 lineal.
 
-Luego de esto se llamó al mejor modelo de esta búsqueda, teniendo un ECM de 26.3601. El gráfico de valores reales Vs predicciones es el siguiente.
+Ander: Luego de esto se llamó al mejor modelo de esta búsqueda, teniendo un ECM de 26.3601. El gráfico de valores reales Vs predicciones es el siguiente.
 Se observa que aunque logra de alguna manera capturar la tendencia de la serie, no captura su media, subestimando notablemente las predicciones, 
 además de no ajustarse realmente bien al comportamiento de la serie original. El gráfico del error de predicción para las 53 observaciones nos muestra
 como para la mayoría de observaciones se alejo por 2-4 unidades, y para la pandemia se alejo demasiado del verdadero valor, por casi 14 unidades.
 Este modelo hace pronósticos muy malos respecto a los anteriores, siendo el peor hasta ahora.
 
-Cabe resaltar que esto no resulta raro debido a la complejidad de las anteriores redes, pues se utilizaron más épocas y tamaños de lotes más pequeños
+Ander: Cabe resaltar que esto no resulta raro debido a la complejidad de las anteriores redes, pues se utilizaron más épocas y tamaños de lotes más pequeños
 para ser estimadas, además de que en el caso de la red multicapa, se utilizó una capa más, complejizando el modelamiento.
 
 -----------------------------------Redes recurrentes--------------------------------
 
-Utilizamos tres tipos de redes neuronales recurrentes, una normal, una GRU y una LSTM, además, hicimos 4 intentos añadiendo nuevas covariables
+Duitama: Utilizamos tres tipos de redes neuronales recurrentes, una normal, una GRU y una LSTM, además, hicimos 4 intentos añadiendo nuevas covariables
 a los 12 retardos con los que trabajamos.
 Al igual que en varios modelamientos, utilizamos el 80% de los datos para el entrenamiento y el 20% restante para probar la capacidad predictiva,
 no requerimos conjunto de validación ya que los hiperparámetros se calcularon mediante validación cruzada.
 
-Estandarizamos nuestra serie de tiempo y creamos los insumos para nuestras redes, utilizamos los 12 retardos como covariables. Teniendo así
+Duitama: Estandarizamos nuestra serie de tiempo y creamos los insumos para nuestras redes, utilizamos los 12 retardos como covariables. Teniendo así
 211 datos para entrenamiento y 53 para prueba.
 
 --Primer intento
 
-El primer intento consistió en modelar la tasa de desempleo utilizando únicamente los 12 retardos como covariables. Definimos 100 épocas y un
+Duitama: El primer intento consistió en modelar la tasa de desempleo utilizando únicamente los 12 retardos como covariables. Definimos 100 épocas y un
 tamaño de lote igual a 12, encontramos los hiperparámetros y entrenamos la red, para finalmente encontrar el error cuadrático medio.
 Obteniendo así 4.147 para la red normal, 2.0889 para la GRU y 3.427 para la LSTM, recordemos que estos no son los verdaderos errores cuadráticos
 medios, ya que fueron calculados con los pronósticos hechos para la tasa de desempleo estandarizada. Más adelante hallaremos los verdaderos MSE.
 
-Este primer gráfico muestra el comportamiento de la red en el conjunto de entrenamiento, y este segundo el comportamiento en el conjunto de prueba,
+Duitama: Este primer gráfico muestra el comportamiento de la red en el conjunto de entrenamiento, y este segundo el comportamiento en el conjunto de prueba,
 podemos ver que la red GRU (línea amarilla) se acerca más a la tasa de desempleo estandarizada, no obstante no es un comportamiento óptimo.
 
 -- Segundo intento
 
-En este segundo intento, añadimos otras covariables con el fin de añadir la estacionalidad, variables dummy que indican el mes que se está
+Anderson: En este segundo intento, añadimos otras covariables con el fin de añadir la estacionalidad, variables dummy que indican el mes que se está
 prediciendo, la disposición del modelo es igual al anterior, simplemente tenemos más covariables.
 Cuando revisamos los MSE en los conjuntos de prueba obtenemos 3,061 para la red normal, 2.545 para la GRU y 5.192 para la LSTM. Recordemos que no
 son los verdaderos MSE. Tenemos una mejora en la red normal a comparación del anterior intento, sin embargo, cuando observamos cómo son los 
@@ -290,18 +290,18 @@ pronósticos son realmente deficientes, tanto en entrenamiento como en prueba.
 
 -- Tercer intento
 
-A comparación del segundo intento, las variables de estacionalidad que añadimos son las componentes de Fourier, revisando los MSE en el conjunto
+Ander: A comparación del segundo intento, las variables de estacionalidad que añadimos son las componentes de Fourier, revisando los MSE en el conjunto
 de prueba, observamos que son los peores MSE hasta el momento. 7.778 para la red normal, 7.893 para la GRU y 4.436 para la LSTM.
 
 -- Cuarto intento
 
-En este último intento, en lugar de añadir una componente de estacionalidad, añadimos una componente de tendencia, la cual consiste en utilizar
+Duitama: En este último intento, en lugar de añadir una componente de estacionalidad, añadimos una componente de tendencia, la cual consiste en utilizar
 el promedio de las últimas 6 observaciones. Los MSE no mejoraron, obteniendo 8.103 en la red normal, 2.809 en la GRU y 4.618 en la LSTM. 
 Teniendo nuevamente pronósticos deficientes en los tres modelos.
 
 
-Por último, compararemos la verdadera tasa de desempleo con los pronósticos reescalados en los conjuntos de prueba, además de los  vredaderos MSE.
+Duitama: Por último, compararemos la verdadera tasa de desempleo con los pronósticos reescalados en los conjuntos de prueba, además de los  vredaderos MSE.
 El modelo que mejor MSE tiene, ya con los datos originales y pronósticos reescalados fue la primera red GRU, aquella que únicamente tenía como
 covariables los 12 retardos. su valor es de 12.436. Los pronósticos correspondientes a este modelo es esta línea amarilla de este primer gráfico.
 
-Los demás pronósticos reescalados en los otros intentos fueron realmente deficientes.
+Duitama: Los demás pronósticos reescalados en los otros intentos fueron realmente deficientes.
