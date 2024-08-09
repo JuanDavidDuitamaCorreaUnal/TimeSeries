@@ -36,11 +36,10 @@ la serie resultante no oscila alrededor de un solo valor.Esto lo pueden observar
 Si bien está oscilando al 0, el dato atípico de la pandemia perjudica el modelo lineal, conllevando
 a un sobreajuste. 
 
-Duitama: El modelo no paramétrico a pesar de que sí logra capturar este comportamiento, lo hace por medio del sobreajuste.
-Con la diferencia ordinaria obtenemos una serie que, al igual que la anterior, parece oscilar alrededor del cero, 
+Duitama: Con la diferencia ordinaria obtenemos una serie que, al igual que la anterior, parece oscilar alrededor del cero, 
 a pesar de que perdemos un dato (Q1 de 2005), estamos en el mismo escenario que en el modelo lineal.
-Finalmente, con los promedios móviles también obtenemos una serie que oscila alrededor del cero, no obstante, 
-se pierden bastantes datos y la cantidad que tiene esta serie es muy poca. En total tenemos 76 trimestres, por lo que consideramos no utilizarlo.
+Finalmente, con los promedios móviles se pierden bastantes datos y la cantidad que tiene esta serie es muy poca. 
+En total tenemos 76 trimestres, por lo que consideramos no utilizarlo.
 
 Anderson: Si bien se muestra la extracción de tendencia, tanto por modelo lineal, como por diferencia ordinaria, 
 los modelos que se expondrán a continuación se manejarán mediante los datos originales.
