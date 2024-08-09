@@ -121,60 +121,62 @@ la diferenciación ordinaria.)
 --- Primera parte: Creación del árbol con tendencia extraida
 
 Primero creamos un árbol sin especificar una profundidad, para el que tenemos este ECM el cual cabe aclarar, no está en la escala original, vemos que
-sobreajusta en entrenamiento pues el R^2 es 1, sin embargo en validación no se desempeña tan bien, para aplacar esto, probaremos distintas 
-profundidades, de 2 a 12. En esta iteración y utilizando comosemilla "...", la mejor profundidad es "...", por lo que procedemos a crear el árbol 
-juntando entrenamiento y validación con esta profundidad. 
+sobreajusta en entrenamiento pues el R^2 es 1, sin embargo en validación no llega a 0.5, para aplacar esto, probaremos distintas profundidades, de 2 
+a 12, con el fin de ver si hay una profundidad mejor. En esta iteración, la mejor profundidad es 6, por lo que procedemos a crear el árbol juntando entrenamiento y validación
+con esta profundidad. 
 
 --- Gráfico predicciones VS verdaderos valores
 
 Este primer gráfico nos muestra las predicciones en el eje X versus los verdaderos valores en el eje Y. El color azul representa esto en el 
 conjunto de entrenamiento mientras que el color naranja representa esto en el conjunto de prueba. Lo ideal sería ver algo como una línea
-recta, lo cual parece suceder en el caso del conjunto de entrenamiento, pero no es tan notorio esto en el conjunto de prueba.
+recta, lo cual parece suceder en el caso del conjunto de entrenamiento, pero no es tan notorio esto en el conjunto de prueba. Esto puede ser un
+indicativo de sobreajuste, sin embargo tenemos que ver realmente cómo se comportan las predicciones para ver si esto es razonable.
 
 Aquí podemos ver un gráfico de las predicciónes en naranja mientras que la verdadera serie está en azul. Se puede observar que el modelo para antes 
-de pandemia no se ajusta mal a la serie, sin embargo pasado ese tiempo no se ajusta de una forma deseable. El modelo de suavizamiento exponencial
-dio mejores resultados.
+de pandemia se ajusta muy bien a la serie, sin embargo pasado ese tiempo no se ajusta de una forma tan deseable. El modelo de suavizamiento 
+exponencial dio mejores resultados.
 
 Recordemos que esto es con la serie sin tendencia por diferenciación ordinaria, por lo que tendremos que volver a nuestra serie original para poder
 comparar el error cuadrático medio de este modelo con los demás y para ver realmente las diferencias entre las predicciones y los verdaderos valores.
 
 --- Gráfico serie re escalada y sus predicciones
 
-"Interpretarlo de acuerdo al árbol presente, si se ajusta medio bien o si se ajusta muy mal." 
-
 En este último gráfico tenemos la serie original en azul y en rojo tenemos la serie original hasta la parte de prueba y luego sus respectivas 
-predicciones, debido a que lo que nos interesa es el ECM de las predicciones en el periodo de prueba, dandonos un ECM de "..."
+predicciones, debido a que lo que nos interesa es el ECM de las predicciones en el periodo de prueba. Podemos ver que subestima notoriamente el pico
+de la pandemia y luego parece acercarse un poco a los datos reales pasado ese pico. El ECM de este modelo es de 16.1133, lo cual no es muy bueno
+comparandolo con el modelo de suavizamiento exponencial.
 
 --- Segunda parte: Creación del árbol con la serie original
 
 Se siguió el mismo proceso que en la primera parte, primero creamos un dataframe con los inputs y outputs de interés y dividimos los datos en
 entrenamiento, validación y prueba. 211 datos para entrenamiento y 53 para prueba ya que no perdemos un dato al no extraer la tendencia.
 
-De nuevo primero creamos un árbol sin especificar la profundidad, luego exploramos distintas profundidades, en esta iteración y utilizando como 
-semilla "...", la mejor profundidad es "...", por lo que procedemos a crear el árbol juntando entrenamiento y validación con esta profundidad. 
-En este caso nos dice otra profundidad, por lo que vamos a crear un árbol con esta profundidad, pero también haremos la prueba con un árbol utilizando 
-la profundidad de la primera parte.
+De nuevo primero creamos un árbol sin especificar la profundidad, luego exploramos distintas profundidades, en esta iteración la mejor profundidad es 
+12, por lo que procedemos a crear el árbol juntando entrenamiento y validación con esta profundidad. En este caso nos dice otra profundidad a la de la
+primera parte, por lo que también se hará un árbol con la profundidad obtenida en la primera parte, para un total de dos árboles, con profundidad 12 y
+6 respectivamente.
 
 --- Gráfico predicciones VS verdaderos valores
 
-Vemos que se logra esbozar una línea recta para el caso del conjunto de entrenamiento, sin embargo para el conjunto de prueba no sucede esto. Para una
-profundidad pequeña esto es menos notorio, sin embargo se pueden ver indicios debido a que para algunos valores el modelo subestima notoriamente la
-serie, concretamente en los puntos naranjas que están distanciados de los demás.
+Vemos que se logra esbozar una línea recta para el caso del conjunto de entrenamiento, sin embargo para el conjunto de prueba no sucede esto y las
+predicciones parecen muy dispersas. Se pueden ver indicios de que para algunos valores el modelo subestima notoriamente la serie, concretamente en 
+los puntos naranjas que están mucho más arriba de la recta azul, indicando que el modelo subestima mucho a la serie en esas predicciones.
 
 --- Gráfico serie re escalada y sus predicciones
 
 Como la serie no ha sido transformada de ninguna manera, no tenemos que reescalarla, por lo que los siguientes gráficos muestran directamente la serie
-original y la serie que predice el modelo. Vemos que captura relativamente bien el comportamiento de la serie original pre pandemia, pero no logra
+original y la serie que predice el modelo. Vemos que captura muy bien el comportamiento de la serie original pre pandemia, pero no logra
 capturar el pico y los años subsecuentes de la mejor manera, gráficamente sigue sin ser mejor que el suavizamiento exponencial.
 
-Tenemos este último gráfico que representa lo mismo que en la primera parte, llevandonos a un ECM de "...".
+Tenemos este último gráfico que representa lo mismo que en la primera parte, llevandonos a un ECM de 10.7995.
 
 Ahora repetimos este mismo proceso pero para la profundidad de la primera parte, llegando a casi las mismas conclusiones, podemos ver esbozarse una
 línea recta en el gráfico de predicciones Vs valores reales con el conjunto de entrenamiento mientras que para el conjunto de prueba no sucede igual. 
 Vemos que el modelo captura el comportamiento de la serie pre pandemia pero pasado el pico le cuesta capturar de manera correcta el comportamiento de
-la serie, y por último tenemos este gráfico que nos lleva a un ECM de "...".
+la serie, y por último tenemos este gráfico que nos lleva a un ECM de 10.7434.
 
-Aunque no son mejores que el modelo de suavizamiento exponencial, el mejor árbol en este caso fue "...".
+Aunque no son mejores que el modelo de suavizamiento exponencial, el mejor árbol en este caso fue el árbol con profundidad 6 y sin extraer tendencia.
+Aun así, el mejor modelo hasta ahora ha sido el modelo de suavizamiento exponencial.
 
 -----------------------------------Redes multicapa----------------------------------
 
