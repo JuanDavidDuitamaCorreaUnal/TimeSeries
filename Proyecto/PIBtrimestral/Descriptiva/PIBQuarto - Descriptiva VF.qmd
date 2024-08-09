@@ -41,7 +41,8 @@ library(readxl)
 ## Importación de datos
 
 ```{r}
-PIB3 <- read_excel("C:/Users/ander/OneDrive - Universidad Nacional de Colombia/Documentos/(2024-01) Octavo Semestre/Series de Tiempo Univariadas/Proyecto/1. Bases de Datos/PIB.xlsx", range = "AS18:AS93", col_names = FALSE)
+setwd("C:/Users/EQUIPO/OneDrive/Documentos/GitHub/TimeSeries/Proyecto/PIBtrimestral")#Ander
+PIB3 <- read_excel("PIB.xlsx", range = "AS18:AS93", col_names = FALSE)
 ```
 
 ## Visualización de datos
@@ -224,39 +225,9 @@ El siguiente modelo se manejará con los datos originales, por lo tanto, para ev
 ```{r}
 Train=ts(PIB3TS[1:61], start = c(2005, 1),frequency = 4) 
 Test=ts(PIB3TS[62:76],start=c(2020,2),frequency = 4) 
-HWAP=stats::HoltWinters(Train,gamma=0) 
-plot_ly(x = time(PIB3TS[5:61]), y = PIB3TS[5:61], type = 'scatter', mode = 'lines', color = I("red"), name = "Original") %>% add_trace(y = HWAP$fitted[,1], mode = 'lines', line = list(color = 'blue'), name = "EWMA") %>%   layout(title = 'Suavizamiento Exponencial',xaxis = list(title = 'Trimestre', rangeslider = list(type = 'date'))) 
 ```
 
-```{r}
-ajustados=fitted(HWAP)#Guarda las estimaciones que hace el modelo para cada trimestre desde enero de 2004 hasta marzo de 2020 
-plot(ajustados)#Gráfico de las tres componentes, nivel, pendiente y estacionalidad 
-HWAP
-```
-
-La estimación del parámetro de Nivel alpha es 1, de Pendiente beta 0.05826555 y de estacionalidad gamma 0.
-
-Por último evaluaremos la capacidad predictiva del modelo haciendo las 15 predicciones para el periodo correspondiente a prueba. Abril de 2020 hasta diciembre de 2023.
-
-```{r}
-predictionHWAP_1=forecast::forecast(HWAP,h=15) 
-predictionHWAP_1 
-plot(predictionHWAP_1)
-```
-
-El error cuadrático medio es
-
-```{r}
-mean((Test-predictionHWAP_1$mean)^2)
-```
-
-Recordemos que el error cuadrático medio es alto debido a que los datos se encuentran en la escala original.
-
-```{r}
-plot_ly(x = time(Test), y = Test, type = 'scatter', mode = 'lines', color = I("red"), name = "PIB") %>%   add_trace(y = predictionHWAP_1$mean, mode = 'lines', line = list(color = 'blue'), name = "Predicciones") %>%   layout(title = 'PIB vs Predicciones (Abril 2020-Diciembre 2023)',xaxis = list(title = 'Trimestre', rangeslider = list(type = 'date')))
-```
-
-**Rolling**
+## Rolling
 
 ##### Rolling manual
 
@@ -285,7 +256,7 @@ colnames(suav_inputs)<-c("alpha","beta")
 suav_inputs_tbl=tibble::as_tibble(suav_inputs) 
 grilla_suav=expand.grid(alpha=suav_inputs_tbl$alpha,beta=suav_inputs_tbl$beta) ##Grilla de Valores 
 ####Se crean las ventanas de rolling y se obtiene los h-pronósticos para cada ventana(hay ntest posibles ventanas) 
-for(i in 1:(ntest)){x=window(PIB3TS,end=time(PIB3TS)[ntrain]+(i-1)/12)   
+for(i in 1:(ntest)){x=window(PIB3TS,end=time(PIB3TS)[ntrain]+(i-1)/4)   
 print(length(x))   
 refit=stats::HoltWinters(x,gamma=0,alpha=HWAP_train$alpha,bet=HWAP_train$beta)     
   fchstepahe[i,]=as.numeric(forecast::forecast(refit,h=h)$mean) } 
