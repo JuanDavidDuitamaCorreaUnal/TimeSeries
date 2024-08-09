@@ -23,7 +23,7 @@ todavía.
 
 ---------------Transformación de Box-Cox---------------------
 
-Duitama: En los análisis posteriores no implementamos la estabilización de la varianza ya que a pesar de que el intervalo de confianza sugería hacer una
+Ander: En los análisis posteriores no implementamos la estabilización de la varianza ya que a pesar de que el intervalo de confianza sugería hacer una
 transformación, obtuvimos una serie de tiempo con un comportamiento más heterogéneo. Por lo que no la usaremos.
 
 Nuevamente un gráfico de autocorrelación que no es válido.
