@@ -1,0 +1,101 @@
+---------------------------------------------------------------------------------------------------------------------------------------
+------------------------------------Descripción serie del PIB trimestral en Colombia------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------------
+
+Una vez presentada la serie del desempleo, a continuación el día les presentaremos el análisis hecho sobre el PIB en Colombia desde enero de 2005 hasta diciembre de 2023, 
+tasa medida trimestralmente.
+
+-----------------Primer gráfico de la serie-------------------
+
+En este primer gráfico podemos observar el comportamiento del PIB en el periodo indicado anteriormente. En un primer vistazo podemos
+observar este valle correspondiente a la pandemia, dándose el punto mínimo en abril de 2020. Antes de la pandemia, se observa que el PIB tiene una tendencia creciente. La disminución
+presentada en la pandemia generó una baja significativa, la cual será referenciada al momento de exponer cada uno de los modelos. Sin embargo, después del valle presentado en abril 2020,
+observamos que el PIB trata de recuperarse nuevamente, respetando la tendencia que mantenía hasta la pandemia.
+
+Revisando más detalladamente, la serie no aparenta tener un patrón cíclico por cada trimestre, a comparación de la serie del desempleo, sin embargo, mas adelante comprobaremos si
+se presenta algún indicio de estacionalidad en la serie.
+
+-------------Primer gráfico de autocorrelación---------------
+
+Este es un primer gráfico de autocorrelación, sin embargo, no es válido puesto que nuestra serie de tiempo no tiene un comportamiento estacionario todavía.
+
+---------------Transformación de Box-Cox---------------------
+
+A continuación, vamos a comprobar si vale la pena realizar una transformación de los datos, para ello, vamos a hallar el valor de lambda que nos permite dar dicha conclusión. 
+Tal y como pueden observar el valor de lambda es cercano a 1, así como el valor de 0 se encuentra incluido en el intervalo de confianza. Por lo que no va a ser necesario realizar una transformación de los datos.
+
+--------------------Extracción de tendencia-------------------------
+
+Empezaremos a retirar la tendencia de nuestra serie, implementamos 4 métodos, extracción por un modelo de regresión lineal simple, modelo
+no paramétrico, diferencia ordinaria y promedios móviles. 
+
+El modelo lineal no fue adecuado ya que este no captura el comportamiento de la pandemia, la serie resultante no oscila alrededor de un solo valor. Esto lo pueden observar en el siguiente
+gráfico. Si bien está oscilando al 0, el dato atípico de la pandemia perjudica el modelo lineal, conllevando a un sobreajuste
+El modelo no paramétrico a pesar de que sí logra capturar este comportamiento, lo hace por medio del sobreajuste.
+Con la diferencia ordinaria obtenemos una serie que, al igual que la anterior, parece oscilar alrededor del cero, a pesar de que perdemos un dato
+(Q1 de 2005), estamos en el mismo escenario que en el modelo lineal.
+Finalmente, con los promedios móviles también obtenemos una serie que oscila alrededor del cero, no obstante, se pierden bastantes datos y la cantidad que tiene esta serie es muy poca. En total tenemos 76 trimestres, por lo que consideramos no utilizarlo.
+
+Si bien se muestra la extracción de tendencia, tanto por modelo lineal, como por diferencia ordinaria, los modelos que se expondrán a continuación se manejarán mediante los datos originales.
+
+Realizando nuevamente los gráficos de autocorrelación no se encuentra un patrón de estacionalidad. Pero, hay algo interesante en el ACF de la extracción por modelo lineal, lo cual es que 
+los 4 primeros retardos se ubican afuera de la brecha azul. Este dato es de suma utilidad, ya que mas adelante, en modelamiento de árboles, vamos a utilizar esos 4 primeros retardo para 
+modelar la serie en ese tema.
+
+----------------Explorando relaciones lineales--------------------
+
+Recordemos que estamos trabajando con la serie cuya tendencia fue extraída por diferencia ordinaria, estos gráficos de dispersión entre los 
+retardos a primer vistazo no evidencian una relación lineal fuerte, el retardo 4 es el que muestra una relación lineal mas alto, con un valor del coeficiente de 0,2
+
+-------------------------Detección de estacionalidad---------------------
+
+Aunque no se hayan considerado las extracciones de tendencia, para efectos de este trabajo, se mostrará la siguiente información, asumiendo que se hubiese elegido la diferencia ordinaria.
+Tal y como pueden observar, el mapa de calor indica grados de color azul muy similares. Exceptuando la pandemia, la cual toma un color blanco. Por lo que esto nos da un indicio de que no hay diferencias significativas entre los trimestres de cada año. Asimismo, el gráfico de las subseries confirma este hecho, al ver que la media de cada trimestre es muy similar a la de los demás. Finalmente, si lo queremos analizar vía Boxplot, se puede visualizar que apenas las cajas de cada trimestre sobrepasan el 0, con medias similares. Finalmente, en el gráfico de estimaciones vía kernel se observa que las densidades por cada trimestre se mantienen en el mismo lado, de hecho, bastante cercanos a 0. Por lo que todo esto es prueba suficiente para demostrar que la serie no presenta estacionalidad, sin embargo, vamos a ver que información nos arroja el periodograma, para saber cómo manejamos el tema de la estacionalidad.
+
+--------------------Periodo de la serie--------------------------
+
+El periodograma concluye que el periodo es 4, sin embargo vemos que los picos mas altos se encuentran oscilando entre 0,2 y 0,3. Sabemos que la serie es trimestral, sin embargo, 
+si la serie fuese estacional, no debiera presentar picos tan altos en numerosos valores. Por lo que, sumado a lo dicho en la detección de estacionalidad, se concluye que la serie del PIB no la presenta, por lo tanto, no vale la pena realizar una extracción de la misma.
+
+------------------------Extracción de la estacionalidad--------------------------
+
+Tal y como se comentó, la serie no presenta estacionalidad, sin embargo, algunos se pueden preguntar el por qué no utilizamos transformaciones vía componentes de Fourier o con variables Dummys. Esto se explica de la siguiente forma: estas transformaciones se utilizan si la serie presenta un comportamiento sinosoidal, lo cual se explica que la serie presenta un patrón cíclico; patrón que no presenta la serie del PIB en este caso, pero si la presentaba la serie del desempleo.
+
+--------------------------------Suavizamiento exponencial------------------------------
+
+El suavizamiento exponencial es un modelo que contiene 3 parámetros, dos relacionados a la estimación de la componente de tendencia, y el 
+tercero a la componente de estacionalidad. El siguiente modelo tendrá únicamente las componentes relacionadas a la tendencia, las cuales son alfa y beta, de hecho,
+el modelo tendrá un valor de gamma de 0, para no tener inconvenientes con temas de estacionalidad que no vienen al caso. Por lo tanto, para evaluar la capacidad predictiva 
+del modelo, utilizando la predicción a un paso, emplearemos el 80% de la serie como conjunto de entrenamiento y el 20% restante como prueba. 
+Es decir, el periodo de entrenamiento corresponde a los primeros 61 trimestres, los cuales corresponden a enero de 2005 hasta abril de 2020, 
+por otro lado, el periodo de prueba corresponde a los últimos 15 trimestres, que van desde mayo de 2020 hasta diciembre de 2023. Recordemos que trabajaremos la serie original.
+	
+
+El primer paso es encontrar las estimaciones de los parámetros utilizando el conjunto de entrenamiento. Obtenemos una estimación de la componente
+de nivel alpha de 1, de pendiente beta igual a 0.05827, de estacionalidad gamma igual a 0. Mediante suavizamiento exponencial, se observa que la serie respeta la tendencia creciente
+del PIB, omitiendo el periodo de pandemia, dejando un ECM de 212455066 (Ojo, este ECM es grande ya que estamos utilizando la escala original, la cual es de miles de millones de pesos).
+
+Posterior a esto hacemos el rolling manualmente, nuestro horizonte de pronóstico es igual a 1, recordemos que estamos evaluando la predicción un
+paso adelante, modificaremos nuestra ventana en cada iteración, añadiendo un trimestre en cada iteración, ajustamos el modelo con los parámetros
+calculados en entrenamiento y realizamos el pronóstico. Por último, calculamos el error cuadrático medio, el cual nos da 1007600296. 
+
+En este gráfico comparamos los pronósticos con la verdadera tasa de desempleo en este periodo. Obteniendo resultados que se dejan llevar por el bajón de la pandemia, pero respetando
+el comportamiento creciente.
+Por último está la implementación del Rolling utilizando funciones, mas como un apartado informativo.	
+
+
+---------------------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------Aprendizaje automático---------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------------
+
+------------------------------------Árboles-----------------------------------------
+
+
+
+-----------------------------------Redes multicapa----------------------------------
+
+
+
+-----------------------------------Redes recurrentes--------------------------------
+
+
