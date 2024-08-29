@@ -40,6 +40,8 @@ library(rsample)
 library(modeltime)
 library(tidymodels)
 library(readxl)
+library(lmtest)
+library(tseries)
 ```
 
 ## Importación de datos
@@ -327,7 +329,7 @@ plot_ly(x = time(DiferenciaOrd), y = DiferenciaOrd, type = 'scatter', mode = 'li
 #####Ajuste Dummy
 
 ModeloDummy<-DiferTSibl|>model(
-  `DummyAirdiff`=ARIMA(value~season()+pdq(0, 0, 0) + PDQ(0, 0, 0))
+  `DummyDesempleoDiff`=ARIMA(value~season()+pdq(0, 0, 0) + PDQ(0, 0, 0))
   
 )
 real_ajustado2<-DiferTSibl%>%left_join(fitted(ModeloDummy,by=index))#%>%select(-.model) 
@@ -341,11 +343,11 @@ plot_ly(x = time(DiferenciaOrd), y = DiferenciaOrd, type = 'scatter', mode = 'li
 #### Varios modelos al mismo tiempo
 
 ajuste_final_models<-DiferTSibl%>%model(
- `Fourier1Airdiff`=ARIMA(value~fourier(K=1)+pdq(0, 0, 0) + PDQ(0, 0, 0)),#1 componente de Fourier
- `Fourier2Airdiff`=ARIMA(value~fourier(K=2)+pdq(0, 0, 0) + PDQ(0, 0, 0)),#2 componente de Fourier
- `Fourier3Airdiff`=ARIMA(value~fourier(K=3)+pdq(0, 0, 0) + PDQ(0, 0, 0)),#3 componente de Fourier
-  `Fourier4Airdiff`=ARIMA(value~fourier(K=4)+pdq(0, 0, 0) + PDQ(0, 0, 0)),#4 componente de Fourier
-`DummyAirdiff`=ARIMA(value~season()+pdq(0, 0, 0) + PDQ(0, 0, 0))#Ajuste dummy
+ `Fourier1DesempleoDiff`=ARIMA(value~fourier(K=1)+pdq(0, 0, 0) + PDQ(0, 0, 0)),#1 componente de Fourier
+ `Fourier2DesempleoDiff`=ARIMA(value~fourier(K=2)+pdq(0, 0, 0) + PDQ(0, 0, 0)),#2 componente de Fourier
+ `Fourier3DesempleoDiff`=ARIMA(value~fourier(K=3)+pdq(0, 0, 0) + PDQ(0, 0, 0)),#3 componente de Fourier
+  `Fourier4DesempleoDiff`=ARIMA(value~fourier(K=4)+pdq(0, 0, 0) + PDQ(0, 0, 0)),#4 componente de Fourier
+`DummyDesempleoDiff`=ARIMA(value~season()+pdq(0, 0, 0) + PDQ(0, 0, 0))#Ajuste dummy
                                         )
 
 glance(ajuste_final_models)
@@ -354,11 +356,11 @@ Modelo_serie_diff_models<-DiferTSibl%>%left_join(fitted(ajuste_final_models)|>gr
     pivot_wider(names_from = .model, values_from = .fitted))
 
 plot_ly(x = time(DiferenciaOrd), y = DiferenciaOrd, type = 'scatter', mode = 'lines', color = I("red"), name = "SerieDifOrd") %>%
-add_trace(y = Modelo_serie_diff_models$Fourier1Airdiff, mode = 'lines', line = list(color = 'blue'), name = "Fourier1") %>%
-add_trace(y = Modelo_serie_diff_models$Fourier2Airdiff, mode = 'lines', line = list(color = 'green'), name = "Fourier2") %>%
-add_trace(y = Modelo_serie_diff_models$Fourier3Airdiff, mode = 'lines', line = list(color = 'yellow'), name = "Fourier3") %>%
-add_trace(y = Modelo_serie_diff_models$Fourier4Airdiff, mode = 'lines', line = list(color = '#00CD66'), name = "Fourier4") %>%
-add_trace(y = Modelo_serie_diff_models$DummyAirdiff, mode = 'lines', line = list(color = 'purple'), name = "Dummy") %>%  
+add_trace(y = Modelo_serie_diff_models$Fourier1DesempleoDiff, mode = 'lines', line = list(color = 'blue'), name = "Fourier1") %>%
+add_trace(y = Modelo_serie_diff_models$Fourier2DesempleoDiff, mode = 'lines', line = list(color = 'green'), name = "Fourier2") %>%
+add_trace(y = Modelo_serie_diff_models$Fourier3DesempleoDiff, mode = 'lines', line = list(color = 'yellow'), name = "Fourier3") %>%
+add_trace(y = Modelo_serie_diff_models$Fourier4DesempleoDiff, mode = 'lines', line = list(color = '#00CD66'), name = "Fourier4") %>%
+add_trace(y = Modelo_serie_diff_models$DummyDesempleoDiff, mode = 'lines', line = list(color = 'purple'), name = "Dummy") %>%  
   layout(title = 'Tasa de Desempleo sin tendencia (Diferencia Ordinaria, lag=1)',
          xaxis = list(title = 'Mes', rangeslider = list(type = 'date')))
 
@@ -369,11 +371,11 @@ add_trace(y = Modelo_serie_diff_models$DummyAirdiff, mode = 'lines', line = list
 
 ```{r}
 plot_ly(x = time(DiferenciaOrd), y = DiferenciaOrd, type = 'scatter', mode = 'lines', color = I("red"), name = "SerieDifOrd") %>%
-add_trace(y = DiferenciaOrd-Modelo_serie_diff_models$Fourier1Airdiff, mode = 'lines', line = list(color = 'blue'), name = "Fourier1") %>%
-add_trace(y = DiferenciaOrd-Modelo_serie_diff_models$Fourier2Airdiff, mode = 'lines', line = list(color = 'green'), name = "Fourier2") %>%
-add_trace(y = DiferenciaOrd-Modelo_serie_diff_models$Fourier3Airdiff, mode = 'lines', line = list(color = 'yellow'), name = "Fourier3") %>%
-add_trace(y = DiferenciaOrd-Modelo_serie_diff_models$Fourier4Airdiff, mode = 'lines', line = list(color = '#00CD66'), name = "Fourier4") %>%
-add_trace(y = DiferenciaOrd-Modelo_serie_diff_models$DummyAirdiff, mode = 'lines', line = list(color = 'purple'), name = "Dummy") %>%  
+add_trace(y = DiferenciaOrd-Modelo_serie_diff_models$Fourier1DesempleoDiff, mode = 'lines', line = list(color = 'blue'), name = "Fourier1") %>%
+add_trace(y = DiferenciaOrd-Modelo_serie_diff_models$Fourier2DesempleoDiff, mode = 'lines', line = list(color = 'green'), name = "Fourier2") %>%
+add_trace(y = DiferenciaOrd-Modelo_serie_diff_models$Fourier3DesempleoDiff, mode = 'lines', line = list(color = 'yellow'), name = "Fourier3") %>%
+add_trace(y = DiferenciaOrd-Modelo_serie_diff_models$Fourier4DesempleoDiff, mode = 'lines', line = list(color = '#00CD66'), name = "Fourier4") %>%
+add_trace(y = DiferenciaOrd-Modelo_serie_diff_models$DummyDesempleoDiff, mode = 'lines', line = list(color = 'purple'), name = "Dummy") %>%  
   layout(title = 'Tasa de Desempleo sin tendencia y estacionalidad (Diferencia Ordinaria, lag=1)',
          xaxis = list(title = 'Mes', rangeslider = list(type = 'date')))
 
@@ -381,10 +383,10 @@ add_trace(y = DiferenciaOrd-Modelo_serie_diff_models$DummyAirdiff, mode = 'lines
 
 ```{r}
 par(mfrow = c(2, 2))
-acf(DiferenciaOrd-Modelo_serie_diff_models$Fourier2Airdiff,lag.max =100,main="Autocorrelación serie sin componentes\n(F2)")
-acf(DiferenciaOrd-Modelo_serie_diff_models$Fourier3Airdiff,lag.max =100,main="Autocorrelación serie sin componentes\n(F3)")
-acf(DiferenciaOrd-Modelo_serie_diff_models$Fourier4Airdiff,lag.max =100,main="Autocorrelación serie sin componentes\n(F4)")
-acf( DiferenciaOrd-Modelo_serie_diff_models$DummyAirdiff,lag.max =100,main="Autocorrelación serie sin componentes\n(Dummy)")
+acf(DiferenciaOrd-Modelo_serie_diff_models$Fourier2DesempleoDiff,lag.max =100,main="Autocorrelación serie sin componentes\n(F2)")
+acf(DiferenciaOrd-Modelo_serie_diff_models$Fourier3DesempleoDiff,lag.max =100,main="Autocorrelación serie sin componentes\n(F3)")
+acf(DiferenciaOrd-Modelo_serie_diff_models$Fourier4DesempleoDiff,lag.max =100,main="Autocorrelación serie sin componentes\n(F4)")
+acf( DiferenciaOrd-Modelo_serie_diff_models$DummyDesempleoDiff,lag.max =100,main="Autocorrelación serie sin componentes\n(Dummy)")
 ```
 
 ## Suavizamiento Exponencial
@@ -498,3 +500,79 @@ apply((Valoresretornados1$holdout -Valoresretornados1$mean)^2,1,mean,na.rm=TRUE)
 
 El error cuadrático medio de las predicciones un paso adelante tanto en el rolling manual como utilizando la función son iguales.
 
+
+## Ajuste modelo ARMA
+
+Primero, para ajustar este modelo, se utilizó la serie con diferenciación ordinaria y además removiendo su componente estacionaria ajustada a través de variables dummy.
+
+```{r}
+DesempNSDiff <- DiferenciaOrd-Modelo_serie_diff_models$DummyDesempleoDiff
+plot(DesempNSDiff)
+acf(DesempNSDiff,lag.max = length(DesempNSDiff))
+acf(DesempNSDiff,ci.type='ma',lag.max = length(DesempNSDiff)/4) ## Rezago máximo q = 1
+pacf(DesempNSDiff,lag.max = length(DesempNSDiff)/4) ## Rezago máximo p = 1
+```
+Viendo esto, se pueden proponer 3 modelos, AR(1), MA(1) y ARMA(1,1).
+
+#### Estimación del modelo
+
+```{r Estimacion}
+library(lmtest)
+ARPURODesem=Arima(DesempNSDiff,order=c(1,0,0),include.mean = FALSE)
+MAPURODesem=Arima(DesempNSDiff,order=c(0,0,1),include.mean = FALSE)
+ARMAMIXTODesem=Arima(DesempNSDiff,order=c(1,0,1),include.mean = FALSE)
+coeftest(ARPURODesem)
+coeftest(MAPURODesem)
+coeftest(ARMAMIXTODesem)
+summary(ARPURODesem)
+```
+
+Se hizo un ARMA automático por si lo visto visualmente en el ACF y PACF fue malinterpretado, sin embargo llega a la misma conclusión, un AR(1) es el mejor entre las propuestas.
+
+```{r}
+Arima_automatico_desempleo=forecast::auto.arima(DesempNSDiff,d=0,D=0,max.p=5,max.q=5,start.p=0, start.q=0,seasonal=FALSE,max.order=10,stationary=TRUE,ic="bic",stepwise=FALSE,allowmean = TRUE) 
+
+Arima_automatico_desempleo 
+```
+Vamos a continuar con el AR(1), veamos si se verifican los supuestos.
+
+#### Verificación de supuestos
+
+```{r}
+# An?lisis de residuales
+residuales=ARPURODesem$residuals
+plot(residuales)
+acf(residuales)
+#acf(residuales^2)
+pacf(residuales)
+
+#Test de autocorrelaci?n
+length(residuales)/4
+sqrt(length(residuales))
+Box.test(residuales, lag =30 , type = "Ljung-Box", fitdf = 1) #No puedo Rechazar la hipótesis de no autocorrelación!
+
+#Test de normalidad
+tseries::jarque.bera.test(residuales) # Se rechaza la hipótesis nula de normalidad, el modelo no es adecuado
+
+
+
+###Estad?sticas CUSUM
+res=residuales
+cum=cumsum(res)/sd(res)
+N=length(res)
+cumq=cumsum(res^2)/sum(res^2)
+Af=0.948 ###Cuantil del 95% para la estad?stica cusum
+co=0.10169####Valor del cuantil aproximado para cusumsq para n/2 aprox 130
+LS=Af*sqrt(N)+2*Af*c(1:length(res))/sqrt(N)
+LI=-LS
+LQS=co+(1:length(res))/N
+LQI=-co+(1:length(res))/N
+plot(cum,type="l",ylim=c(min(LI),max(LS)),xlab="t",ylab="",main="CUSUM")
+lines(LS,type="S",col="red")
+lines(LI,type="S",col="red")
+#CUSUMSQ
+plot(cumq,type="l",xlab="t",ylab="",main="CUSUMSQ")                      
+lines(LQS,type="S",col="red")                                                                           
+lines(LQI,type="S",col="red")
+```
+Entonces, un modelo AR(1), y en general, un modelo ARMA no es el adecuado para modelar esta serie de tiempo, por lo que no se realizarán predicciones. 
