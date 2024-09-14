@@ -46,6 +46,7 @@ library(urca)
 library(uroot)
 library(fUnitRoots)
 library(aTSA)
+library(sarima)
 ```
 
 ## Importación de datos
@@ -54,7 +55,7 @@ library(aTSA)
 #setwd("D:/Estadística/Semestres/Semestre 9/Series de Tiempo Univariadas/Datos")
 #Data <- read.csv("DesempleoLimpio")[,c(2,4)]
 #colnames(Data)<-c("AnioMes","TasaDesempleo")
-setwd("C:/Users/EQUIPO/OneDrive/Documentos/GitHub/TimeSeries/Proyecto/Desempleo")#Ander
+setwd("C:/Users/EQUIPO/Documents/GitHub/TimeSeries/Proyecto/Desempleo")#Ander
 Data <- read_excel("Desempleo.xlsx", skip = 5, n_max = 276)
 Data <- subset(Data, select = -`Tasa de ocupación (%)`)
 #setwd("D:/Estadística/Semestres/Semestre 9/Series de Tiempo Univariadas/Datos")
@@ -404,15 +405,12 @@ b_t & = \beta(a_t-a_{t-1}) + (1-\beta)b_{t-1} \\
 s_t & = \gamma(x_t-a_t) + (1-\gamma)s_{t-p}
 \end{align*}
 ```
-
-
 El siguiente modelo tendrá las tres componentes, por lo tanto, para evaluar la capacidad predictiva del modelo, utilizando la predicción a un paso, emplearemos el 80% de la serie como conjunto de entrenamiento y el 20% restante como prueba. Es decir, el periodo de entrenamiento corresponde a los primeros 221 meses, es decir, de enero de 2001 hasta mayo de 2019, por otro lado, el periodo de prueba corresponde a junio de 2019 hasta diciembre de 2023. Recordemos que trabajaremos la serie original.
 
 ```{r}
 Train=ts(DesempleoTS[1:221], start = c(2001, 1),frequency = 12)
 Test=ts(DesempleoTS[222:276],start=c(2019,6),frequency = 12)
 ```
-
 
 #### Rolling
 
@@ -475,8 +473,7 @@ plot_ly(x = time(Test), y = Test, type = 'scatter', mode = 'lines', color = I("r
          xaxis = list(title = 'Mes', rangeslider = list(type = 'date')))
 ```
 
-
-##### Rolling usando la función 
+##### Rolling usando la función
 
 ```{r rolling 2}
 library(forecast)
@@ -501,9 +498,7 @@ Veamos si el error cuadrático medio haciendolo manualmente es igual a cuando ut
 apply((Valoresretornados1$holdout -Valoresretornados1$mean)^2,1,mean,na.rm=TRUE) == ECM
 ```
 
-
 El error cuadrático medio de las predicciones un paso adelante tanto en el rolling manual como utilizando la función son iguales.
-
 
 ## Ajuste modelo ARMA
 
@@ -516,6 +511,7 @@ acf(DesempNSDiff,lag.max = length(DesempNSDiff))
 acf(DesempNSDiff,ci.type='ma',lag.max = length(DesempNSDiff)/4) ## Rezago máximo q = 1
 pacf(DesempNSDiff,lag.max = length(DesempNSDiff)/4) ## Rezago máximo p = 1
 ```
+
 Viendo esto, se pueden proponer 3 modelos, AR(1), MA(1) y ARMA(1,1).
 
 #### Estimación del modelo
@@ -538,6 +534,7 @@ Arima_automatico_desempleo=forecast::auto.arima(DesempNSDiff,d=0,D=0,max.p=5,max
 
 Arima_automatico_desempleo 
 ```
+
 Vamos a continuar con el AR(1), veamos si se verifican los supuestos.
 
 #### Análisis de residuales
@@ -566,7 +563,7 @@ cum=cumsum(res)/sd(res)
 N=length(res)
 cumq=cumsum(res^2)/sum(res^2)
 Af=0.948 ###Cuantil del 95% para la estad?stica cusum
-co=0.10169####Valor del cuantil aproximado para cusumsq para n/2 aprox 130
+co=0.09821####Valor del cuantil aproximado para cusumsq para n/2 aprox 130
 LS=Af*sqrt(N)+2*Af*c(1:length(res))/sqrt(N)
 LI=-LS
 LQS=co+(1:length(res))/N
@@ -579,8 +576,8 @@ plot(cumq,type="l",xlab="t",ylab="",main="CUSUMSQ")
 lines(LQS,type="S",col="red")                                                                           
 lines(LQI,type="S",col="red")
 ```
-Entonces, un modelo AR(1), y en general, un modelo ARMA no es el adecuado para modelar esta serie de tiempo, por lo que no se realizarán predicciones. 
 
+Entonces, un modelo AR(1), y en general, un modelo ARMA no es el adecuado para modelar esta serie de tiempo, por lo que no se realizarán predicciones.
 
 ## Ajuste modelo ARIMA
 
@@ -627,6 +624,7 @@ pacf(DiferenciaOrd,lag.max = 60)  ####Puede ser un autoregresivo de orden 12
 
 ###Arima Automático
 modelo.automatico1=auto.arima(DiferenciaOrd,d=0,D=0,max.p=24,max.q=60,start.p=0, start.q=0,seasonal=FALSE,max.order=24,stationary=TRUE,ic="aicc",stepwise=FALSE,allowmean = TRUE)
+modelo.automatico1
 ```
 
 ```{r}
@@ -674,7 +672,7 @@ cum=cumsum(res)/sd(res)
 N=length(res)
 cumq=cumsum(res^2)/sum(res^2)
 Af=0.948 ###Cuantil del 95% para la estad?stica cusum
-co=0.10169
+co=0.09821
 LS=Af*sqrt(N)+2*Af*c(1:length(res))/sqrt(N)
 LI=-LS
 LQS=co+(1:length(res))/N
