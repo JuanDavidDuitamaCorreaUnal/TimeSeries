@@ -955,18 +955,4 @@ lines(LQI,type="S",col="red")
 
 ```
 
-```{r}
-modeloSARIMA = Arima(DesempleoTS, c(2, 1, 1),seasonal = list(order = c(2, 1, 1), period = 12),lambda = 1)
-resSARIMA <- modeloSARIMA$residuals
-n=length(DesempleoTS)
-coef=coefs2poly(modeloSARIMA)
-coef
-outliers= tsoutliers::locate.outliers(resSARIMA,coef)
-outliers###tstat se compara con C=3
-xreg = outliers.effects(outliers, n)
-
-SARIMA_out = update(modeloSARIMA, xreg = xreg)
-SARIMA_out
-```
-
 Este modelo logró pasar todos los supuestos, por lo que trabajaremos con este evaluando su ECM haciendo rolling.
