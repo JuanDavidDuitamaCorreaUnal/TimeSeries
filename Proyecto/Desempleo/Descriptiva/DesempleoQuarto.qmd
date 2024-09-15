@@ -47,6 +47,7 @@ library(uroot)
 library(fUnitRoots)
 library(aTSA)
 library(sarima)
+library(tsoutliers)
 ```
 
 ## Importación de datos
@@ -543,33 +544,33 @@ Vamos a continuar con el AR(1), veamos si se verifican los supuestos.
 
 ```{r}
 # An?lisis de residuales
-residuales=ARPURODesem$residuals
-plot(residuales)
-acf(residuales)
-#acf(residuales^2)
-pacf(residuales)
+residualesARPURO=ARPURODesem$residuals
+plot(residualesARPURO)
+acf(residualesARPURO)
+#acf(residualesARPURO^2)
+pacf(residualesARPURO)
 
 #Test de autocorrelaci?n
-length(residuales)/4
-sqrt(length(residuales))
-Box.test(residuales, lag =30 , type = "Ljung-Box", fitdf = 1) #No puedo Rechazar la hipótesis de no autocorrelación!
+length(residualesARPURO)/4
+sqrt(length(residualesARPURO))
+Box.test(residualesARPURO, lag =30 , type = "Ljung-Box", fitdf = 1) #No puedo Rechazar la hipótesis de no autocorrelación!
 
 #Test de normalidad
-tseries::jarque.bera.test(residuales) # Se rechaza la hipótesis nula de normalidad, el modelo no es adecuado
+tseries::jarque.bera.test(residualesARPURO) # Se rechaza la hipótesis nula de normalidad, el modelo no es adecuado
 
 
 
 ###Estad?sticas CUSUM
-res=residuales
-cum=cumsum(res)/sd(res)
-N=length(res)
-cumq=cumsum(res^2)/sum(res^2)
+resARPURO=residualesARPURO
+cum=cumsum(resARPURO)/sd(resARPURO)
+N=length(resARPURO)
+cumq=cumsum(resARPURO^2)/sum(resARPURO^2)
 Af=0.948 ###Cuantil del 95% para la estad?stica cusum
 co=0.09821####Valor del cuantil aproximado para cusumsq para n/2 aprox 130
-LS=Af*sqrt(N)+2*Af*c(1:length(res))/sqrt(N)
+LS=Af*sqrt(N)+2*Af*c(1:length(resARPURO))/sqrt(N)
 LI=-LS
-LQS=co+(1:length(res))/N
-LQI=-co+(1:length(res))/N
+LQS=co+(1:length(resARPURO))/N
+LQI=-co+(1:length(resARPURO))/N
 plot(cum,type="l",ylim=c(min(LI),max(LS)),xlab="t",ylab="",main="CUSUM")
 lines(LS,type="S",col="red")
 lines(LI,type="S",col="red")
@@ -648,39 +649,39 @@ coeftest(AjusteArimaRef)
 ### Análisis de Residuales
 
 ```{r}
-residuales=AjusteArimaRef$residuals
-plot(residuales)
+residualesARIMA=AjusteArimaRef$residuals
+plot(residualesARIMA)
 #
 #plot(SDresiduales)
-acf(residuales,lag.max = 48)
-pacf(residuales)
+acf(residualesARIMA,lag.max = 48)
+pacf(residualesARIMA)
 
 #acf(SDresiduales)
 #pacf(SDresiduales)
 
 
 #Test de normalidad
-jarque.bera.test(residuales)
+jarque.bera.test(residualesARIMA)
 #Test de autocorrelación
-length(residuales)/4
-sqrt(length(residuales))
-Box.test(residuales, lag =30 , type = "Ljung-Box", fitdf = 12)
+length(residualesARIMA)/4
+sqrt(length(residualesARIMA))
+Box.test(residualesARIMA, lag =30 , type = "Ljung-Box", fitdf = 12)
 
 
 
-monthplot(residuales)
-spectrum(residuales,spans = c(3,5))
+monthplot(residualesARIMA)
+spectrum(residualesARIMA,spans = c(3,5))
 ###Estad?sticas CUSUM
-res=residuales
-cum=cumsum(res)/sd(res)
-N=length(res)
-cumq=cumsum(res^2)/sum(res^2)
+resARIMA=residualesARIMA
+cum=cumsum(resARIMA)/sd(resARIMA)
+N=length(resARIMA)
+cumq=cumsum(resARIMA^2)/sum(resARIMA^2)
 Af=0.948 ###Cuantil del 95% para la estad?stica cusum
 co=0.09821
-LS=Af*sqrt(N)+2*Af*c(1:length(res))/sqrt(N)
+LS=Af*sqrt(N)+2*Af*c(1:length(resARIMA))/sqrt(N)
 LI=-LS
-LQS=co+(1:length(res))/N
-LQI=-co+(1:length(res))/N
+LQS=co+(1:length(resARIMA))/N
+LQI=-co+(1:length(resARIMA))/N
 plot(cum,type="l",ylim=c(min(LI),max(LS)),xlab="t",ylab="",main="CUSUM")
 lines(LS,type="S",col="red")
 lines(LI,type="S",col="red")
@@ -704,15 +705,15 @@ tsibbleDesem<-as_tsibble(DesempleoTS)
 
 ###Armónicos
 
-ajuste_final<-tsibbleDesem%>%model(
+ajuste_dummy<-tsibbleDesem%>%model(
   `Dummy`=ARIMA(value~0+season()+pdq(15,1,1)+PDQ(0,0,0)))
 
-glance(ajuste_final)
+glance(ajuste_dummy)
 
-ajuste_final %>%
+ajuste_dummy %>%
      select(Dummy)%>%coef()
 
-ajuste_final %>%
+ajuste_dummy %>%
   fabletools::forecast(h = "2 years") %>%
   autoplot(tsibbleDesem, level = 95) +  facet_wrap(vars(.model), ncol = 2) +
   guides(colour = "none", fill = "none", level = "none") +
@@ -750,37 +751,140 @@ pacf(DdDesempleoTS,lag.max = 120) # p=0, P=5
 
 ### Estimación del modelo
 
-```{r Ajustes y Residuales}
+```{r}
 ##Ajuste del modelo
 ###Arima Estacional
 
 
 #Modelo
-modelo = Arima(DesempleoTS, c(5, 1, 5),seasonal = list(order = c(5, 1, 1), period = 12),lambda = 1)
+modeloSARIMA = Arima(DesempleoTS, c(0, 1, 0),seasonal = list(order = c(5, 1, 1), period = 12),lambda = 1)
 
-coeftest(modelo)
+coeftest(modeloSARIMA)
+```
 
+### Análisis de residuales
 
-
-# ,include.drift = TRUE sale un warning dado que se hace una doble diferenciación
+```{r}
 ## Análisis de residuales
 
-
-
-residuales <- modelo$residuals
-plot(residuales)
-acf(residuales,lag.max = 50)
-pacf(residuales,lag.max = 50)
+residualesSARIMA <- modeloSARIMA$residuals
+plot(residualesSARIMA)
+acf(residualesSARIMA,lag.max = 50)
+pacf(residualesSARIMA,lag.max = 50)
 #Test de autocorrelaci?n
-Box.test(residuales, lag = (length(residuales)/4), type = "Ljung-Box", fitdf = 2)
+Box.test(residualesSARIMA, lag = (length(residualesSARIMA)/4), type = "Ljung-Box", fitdf = 5)
 ######Análisis de Outliers
 #Test de normalidad
-jarque.bera.test(residuales)
+jarque.bera.test(residualesSARIMA)
 
 
 
 ###Estad?ticas CUSUM
-res=residuales
+resSARIMA=residualesSARIMA
+cum=cumsum(resSARIMA)/sd(resSARIMA)
+N=length(resSARIMA)
+cumq=cumsum(resSARIMA^2)/sum(resSARIMA^2)
+Af=0.948 ###Cuantil del 95% para la estad?stica cusum
+co=0.09821####Valor del cuantil aproximado para cusumsq para 140
+LS=Af*sqrt(N)+2*Af*c(1:length(resSARIMA))/sqrt(N)
+LI=-LS
+LQS=co+(1:length(resSARIMA))/N
+LQI=-co+(1:length(resSARIMA))/N
+plot(cum,type="l",ylim=c(min(LI),max(LS)),xlab="t",ylab="",main="CUSUM")
+lines(LS,type="S",col="red")
+lines(LI,type="S",col="red")
+#CUSUM Square
+plot(cumq,type="l",xlab="t",ylab="",main="CUSUMSQ")                      
+lines(LQS,type="S",col="red")                                                                           
+lines(LQI,type="S",col="red")
+
+```
+
+## Detección e intervención de Outliers
+
+### Detección del outliers
+
+
+```{r}
+n=length(DesempleoTS)
+coef=coefs2poly(modeloSARIMA)
+coef
+outliers= tsoutliers::locate.outliers(resSARIMA,coef)
+outliers###tstat se compara con C=3
+xreg = outliers.effects(outliers, n)
+
+SARIMA_out = update(modeloSARIMA, xreg = xreg)
+```
+
+### SARIMA(0,1,0)(5,1,1)
+
+```{r}
+## Análisis de residuales
+
+residualesSARIMA <- SARIMA_out$residuals
+plot(residualesSARIMA)
+acf(residualesSARIMA,lag.max = 50)
+pacf(residualesSARIMA,lag.max = 50)
+#Test de autocorrelaci?n
+Box.test(residualesSARIMA, lag = (length(residualesSARIMA)/4), type = "Ljung-Box", fitdf = 12)
+######Análisis de Outliers
+#Test de normalidad
+jarque.bera.test(residualesSARIMA)
+
+
+
+###Estad?ticas CUSUM
+resSARIMA=residualesSARIMA
+cum=cumsum(resSARIMA)/sd(resSARIMA)
+N=length(resSARIMA)
+cumq=cumsum(resSARIMA^2)/sum(resSARIMA^2)
+Af=0.948 ###Cuantil del 95% para la estad?stica cusum
+co=0.09821####Valor del cuantil aproximado para cusumsq para 140
+LS=Af*sqrt(N)+2*Af*c(1:length(resSARIMA))/sqrt(N)
+LI=-LS
+LQS=co+(1:length(resSARIMA))/N
+LQI=-co+(1:length(resSARIMA))/N
+plot(cum,type="l",ylim=c(min(LI),max(LS)),xlab="t",ylab="",main="CUSUM")
+lines(LS,type="S",col="red")
+lines(LI,type="S",col="red")
+#CUSUM Square
+plot(cumq,type="l",xlab="t",ylab="",main="CUSUMSQ")                      
+lines(LQS,type="S",col="red")                                                                           
+lines(LQI,type="S",col="red")
+
+```
+
+### Detección automática de outliers
+
+```{r}
+n=length(DesempleoTS)
+salida_tso = tso(DesempleoTS, maxit.oloop = 10)
+plot(salida_tso)
+xreg = outliers.effects(salida_tso$outliers, n)
+salida_tso
+
+SARIMA_out = Arima(DesempleoTS, c(2, 1, 0),seasonal = list(order = c(2, 1, 0), period = 12),lambda = 1, xreg = xreg)
+```
+
+### SARIMA(2,1,0)(2,1,0)
+
+```{r}
+## Análisis de residuales
+
+residuales <- SARIMA_out$residuals
+plot(residuales)
+acf(residuales,lag.max = 50)
+pacf(residuales,lag.max = 50)
+#Test de autocorrelaci?n
+Box.test(residuales, lag = (length(residualesSARIMA)/4), type = "Ljung-Box", fitdf = 10)
+######Análisis de Outliers
+#Test de normalidad
+jarque.bera.test(residualesSARIMA)
+
+
+
+###Estad?ticas CUSUM
+res=residualesSARIMA
 cum=cumsum(res)/sd(res)
 N=length(res)
 cumq=cumsum(res^2)/sum(res^2)
@@ -798,8 +902,71 @@ plot(cumq,type="l",xlab="t",ylab="",main="CUSUMSQ")
 lines(LQS,type="S",col="red")                                                                           
 lines(LQI,type="S",col="red")
 
-#####Fase de Pronósticos
-pronosticosSARIMA=forecast::forecast(modelo,h=12,level=0.95)
-plot(pronosticosSARIMA)
+```
+### SARIMA(2,1,1)(2,1,1)
+
+```{r}
+modeloSARIMA = Arima(DesempleoTS, c(2, 1, 1),seasonal = list(order = c(2, 1, 1), period = 12),lambda = 1)
+resSARIMA <- modeloSARIMA$residuals
+n=length(DesempleoTS)
+coef=coefs2poly(modeloSARIMA)
+coef
+outliers= tsoutliers::locate.outliers(resSARIMA,coef)
+outliers###tstat se compara con C=3
+xreg = outliers.effects(outliers, n)
+
+SARIMA_out = update(modeloSARIMA, xreg = xreg)
+SARIMA_out
+```
+
+```{r}
+## Análisis de residuales
+
+residuales <- SARIMA_out$residuals
+plot(residuales)
+acf(residuales,lag.max = 50)
+pacf(residuales,lag.max = 50)
+#Test de autocorrelaci?n
+Box.test(residuales, lag = (length(residualesSARIMA)/4), type = "Ljung-Box", fitdf = 16)
+######Análisis de Outliers
+#Test de normalidad
+jarque.bera.test(residualesSARIMA)
+
+
+
+###Estad?ticas CUSUM
+res=residualesSARIMA
+cum=cumsum(res)/sd(res)
+N=length(res)
+cumq=cumsum(res^2)/sum(res^2)
+Af=0.948 ###Cuantil del 95% para la estad?stica cusum
+co=0.09821####Valor del cuantil aproximado para cusumsq para 140
+LS=Af*sqrt(N)+2*Af*c(1:length(res))/sqrt(N)
+LI=-LS
+LQS=co+(1:length(res))/N
+LQI=-co+(1:length(res))/N
+plot(cum,type="l",ylim=c(min(LI),max(LS)),xlab="t",ylab="",main="CUSUM")
+lines(LS,type="S",col="red")
+lines(LI,type="S",col="red")
+#CUSUM Square
+plot(cumq,type="l",xlab="t",ylab="",main="CUSUMSQ")                      
+lines(LQS,type="S",col="red")                                                                           
+lines(LQI,type="S",col="red")
 
 ```
+
+```{r}
+modeloSARIMA = Arima(DesempleoTS, c(2, 1, 1),seasonal = list(order = c(2, 1, 1), period = 12),lambda = 1)
+resSARIMA <- modeloSARIMA$residuals
+n=length(DesempleoTS)
+coef=coefs2poly(modeloSARIMA)
+coef
+outliers= tsoutliers::locate.outliers(resSARIMA,coef)
+outliers###tstat se compara con C=3
+xreg = outliers.effects(outliers, n)
+
+SARIMA_out = update(modeloSARIMA, xreg = xreg)
+SARIMA_out
+```
+
+Este modelo logró pasar todos los supuestos, por lo que trabajaremos con este evaluando su ECM haciendo rolling.
