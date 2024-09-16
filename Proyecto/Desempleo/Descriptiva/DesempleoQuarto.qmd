@@ -48,6 +48,7 @@ library(fUnitRoots)
 library(aTSA)
 library(sarima)
 library(tsoutliers)
+library(fpp)
 ```
 
 ## Importación de datos
@@ -955,4 +956,50 @@ lines(LQI,type="S",col="red")
 
 ```
 
-Este modelo logró pasar todos los supuestos, por lo que trabajaremos con este evaluando su ECM haciendo rolling.
+Este modelo logró pasar todos los supuestos, se revisará si hay algún outlier en este modelo.
+
+```{r}
+SARIMA_out
+
+resFINAL <- SARIMA_out$residuals
+n=length(DesempleoTS)
+coefFINAL=coefs2poly(SARIMA_out)
+coefFINAL
+outliersFINAL= locate.outliers(resFINAL,coefFINAL)
+outliersFINAL
+```
+Ya no hay más outliers, por lo que se procederá a evaluar su ECM de la predicción un paso adelante haciendo rolling.
+
+## Rolling modelo SARIMA final
+
+
+```{r}
+SARIMA_out
+#refit <- Arima(DesempleoTS, model=fitmodelo)
+fc <- window(fitted(SARIMA_out), start=c(2019,6))
+
+esta_param_modelo<-coef(SARIMA_out)
+h <- 1
+train = window(DesempleoTS,end=time(DesempleoTS)[ntrain])
+test = window(DesempleoTS,start=time(DesempleoTS)[ntrain]+1/12)
+n <- length(test) - h + 1
+fitmodelo <- update(SARIMA_out,fixed=esta_param_modelo)
+fc <- ts(numeric(n), start=c(2019,6), freq=12)
+for(i in 1:n)
+{ 
+  x <- window(DesempleoTS, end=c(2019, 5+(i-1)))
+  refit <- forecast::Arima(x, model=fitmodelo, xreg = xreg[1:(221+(i-1)),])
+  fc[i] <- forecast::forecast(refit, h=h,xreg = t(as.matrix(xreg[(221+i),])))$mean[h]
+}
+dife=(test-fc)^2
+ecm=(1/(length(test)))*sum(dife)
+ecm
+```
+```{r}
+plot_ly(x = time(test), y = test, type = 'scatter', mode = 'lines', color = I("red"), name = "TasaDesempleo") %>%
+  add_trace(y = fc, mode = 'lines', line = list(color = 'blue'), name = "Predicciones") %>%
+  layout(title = 'Tasa de Desempleo vs Predicciones (Junio 2019-Diciembre 2023)',
+         xaxis = list(title = 'Mes', rangeslider = list(type = 'date')))
+```
+
+
