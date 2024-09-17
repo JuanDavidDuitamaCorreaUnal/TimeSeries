@@ -53,15 +53,17 @@ library(aTSA)
 library(sarima)
 library(tsoutliers)
 library(fpp)
+library(here)
+
+Ruta<- here::here()
 
 
-Ruta<-"D:/Estadística/Semestres/Semestre 9/Series de Tiempo Univariadas/Shiny/"
 
 
 # Desempleo ---------------------------------------------------------------
 
 
-Desempleo <- read_excel(paste0(Ruta,"Datos/Desempleo.xlsx"), skip = 5, n_max = 276)
+Desempleo <- read_excel(paste0(Ruta,"/Datos/Desempleo.xlsx"), skip = 5, n_max = 276)
 Desempleo <- subset(Desempleo, select = -`Tasa de ocupación (%)`)
 colnames(Desempleo)<-c("AnioMes","TasaDesempleo")
 Desempleo$AnioMes<-paste0(Desempleo$AnioMes,"-01")
@@ -148,7 +150,7 @@ LQI=-co+(1:length(resARPURO))/N
 # PIB ---------------------------------------------------------------------
 
 
-PIB3 <- read_excel(paste0(Ruta,"Datos/PIB.xlsx"), range = "AS18:AS93", col_names = FALSE)
+PIB3 <- read_excel(paste0(Ruta,"/Datos/PIB.xlsx"), range = "AS18:AS93", col_names = FALSE)
 PIB3 <- data.frame('Fecha'=seq.Date(from=as.Date("2005-03-01"),to=as.Date("2023-12-01"),by="quarter"),'PIBtrimestral'=PIB3$...1)
 #Objeto ts
 PIB3TS <- ts(PIB3, start = c(2005, 1), end = c(2023, 4), frequency = 4)

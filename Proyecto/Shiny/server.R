@@ -96,6 +96,7 @@ server <- function(input,output,session){
   output[["Detec_Est_Desem_subser"]]<-renderPlot({
     monthplot(diff(DesempleoTS),main="Subseries(Diferencia Ordinaria)")
   })
+  
   #Boxplots
   output[["Detec_Est_Desem_boxplo"]]<-renderPlotly({
     tsibbleDesem<-as_tsibble(DesempleoTS)
