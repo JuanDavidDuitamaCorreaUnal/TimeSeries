@@ -1,0 +1,271 @@
+ui <- page_navbar(title="Series de tiempo univariadas 2024-1",
+                  underline=T,
+                  id='nav',
+                  theme = bs_theme(version = 5,
+                                   preset = 'zephyr',
+                                   bg = "#fff",
+                                   fg = "#000",
+                                   primary = "#FF0000",
+                                   secondary = "#00008B",
+                                   success = "#EEC900"),
+                  #:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+                  # 0.Introducción ------------------------------------------------------------
+                  #::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+                  
+                  nav_panel(
+                    title = "Series",
+                    br(),
+                    br(),
+                    br(),
+                    
+                    # Fila de gráficos
+                    fluidRow(
+                      column(6, plotlyOutput("GraficaDesempleo")),
+                      column(6, plotlyOutput("GraficaPIB"))
+                    ),
+                    # Pie de página
+                    div(
+                      strong("Realizado por: John Anderson Guarín - Ander Steven Cristancho - Juan David Duitama"),
+                      style = "
+                            position: fixed;
+                            bottom: 0;
+                            width: 100%;
+                            background-color: #f8f9fa;
+                            text-align: center;
+                            padding: 10px;
+                            font-size: 14px;"
+                    )
+                  ),
+
+                  #:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+                  # 1. Tasa mensual de desempleo ------------------------------------------------------------
+                  #::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+                  nav_menu(title="Tasa de desempleo mensual",
+                           #:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+                           ## 1.1 Análisis descriptivo ------------------------------------------------------------
+                           #::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+                           nav_panel(title="Análisis descriptivo",
+                                     layout_sidebar(
+                                       sidebar = sidebar(
+                                         selectInput(inputId = "AnioDesemp_Desc",
+                                                     label = "Seleccione el año desde donde desea visualizar las series",
+                                                     choices = 2001:2023,
+                                                     selected = 2001,
+                                                     multiple = FALSE),
+                                         selectInput(inputId = "MesDesemp_Desc",
+                                                     label = "Mes:",
+                                                     choices = c("Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"),
+                                                     selected = "Enero",
+                                                     multiple = FALSE),
+                                         width = 500,
+                                         open = TRUE,
+                                         fluid =T
+                                       ),
+                                       position = "left",
+                                       fillable = T,
+                                       fluidRow(
+                                         column(12,card(full_screen = T,
+                                                        plotlyOutput("GraficaDesempleox"))),
+                                         column(6,card(full_screen = T,
+                                                       card_header("Transformación de Box-Cox",
+                                                                   popover(
+                                                                     bsicons::bs_icon("bricks",class = "ms-auto"),
+                                                                     sliderInput("Lambda_Desemp",label = "Seleccione un Lambda",min = -3,max=3,value=-1.3,step=0.1),
+                                                                   ),class = 'd-flex align-items-center gap-1'),
+                                                       plotlyOutput("Desempleo_BoxCox")
+                                                       )),
+                                         column(6,navset_card_tab(
+                                           full_screen = TRUE,
+                                           title = "Extracción de tendencia",
+                                           nav_panel("Diferencia Ordinaria",plotlyOutput("Tend_Diff_ord_Desemp")),
+                                           nav_panel("Regresión lineal",plotlyOutput("Tend_Lineal_Desemp")),
+                                           nav_panel("No paramétrico",plotlyOutput("Tend_No_Param_Desemp")),
+                                           nav_panel("Promedio móvil",plotlyOutput("Tend_Prom_mov_Desemp"))
+                                         )),
+                                         column(6,card(card_header("Gráfico de retardos (Diferencia Ordinaria)"),full_screen = T,plotOutput("Retardos_Desemp"))),
+                                         column(6,card(card_header("Autocorrelación parcial (Diferencia Ordinaria)"),full_screen = T,plotOutput("pacf_Desemp"))),
+                                         column(6,navset_card_tab(
+                                           full_screen = TRUE,
+                                           title = "Detección de estacionalidad",
+                                           nav_panel("Mapa de calor",plotlyOutput("Detec_Est_Desem_heatmap")),
+                                           nav_panel("Subseries mensuales",plotOutput("Detec_Est_Desem_subser")),
+                                           nav_panel("Boxplots",plotlyOutput("Detec_Est_Desem_boxplo"))
+                                         )),
+                                         column(6,card(full_screen=T,card_header("Estimación de la estacionalidad"),plotlyOutput("Varias_Estacional_Desemp"))),
+                                         column(6,card(full_screen=T,card_header("Estacionalidad extraída"),plotlyOutput("Extrac_tendencia_Desemp"))),
+                                         column(6,card(full_screen = T,card_header("ACF"),plotOutput("ACF_Desemp")))
+                                       )
+                                       
+                                     )),#Fin nav_panel Análisis descriptivo
+                           
+                           #:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+                           ## 1.2 Aprendizaje automático ------------------------------------------------------------
+                           #::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+                           nav_panel(title = "Aprendizaje automático",
+                                     layout_sidebar(
+                                       position = "left",
+                                       fillable = F,
+                                       fluidRow(
+                                         column(6,),
+                                         column(6,),
+                                         column(6,),
+                                         column(6,)
+                                       )
+                                       
+                                     )
+                             
+                           ),#Fin nav_panel Aprendizaje automáatico
+                           
+                           #:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+                           ## 1.3 Modelos estadísticos ------------------------------------------------------------
+                           #::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+                           nav_panel(title = "Modelos estadísticos",
+                                     layout_sidebar(
+                                       sidebar = sidebar(
+                                         selectInput(inputId = "AnioDesemp_Mod",
+                                                     label = "Seleccione el año desde donde desea visualizar las series",
+                                                     choices = 2001:2023,
+                                                     selected = 2001,
+                                                     multiple = FALSE),
+                                         selectInput(inputId = "MesDesemp_Mod",
+                                                     label = "Mes:",
+                                                     choices = c("Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"),
+                                                     selected = "Enero",
+                                                     multiple = FALSE),
+                                         width = 500,
+                                         open = TRUE,
+                                         fluid =T
+                                       ),
+                                       position = "left",
+                                       fillable = T,
+                                       fluidRow(
+                                         column(12,card(full_screen = T,
+                                                        card_header( "División entrenamiento y prueba"),
+                                                        plotlyOutput("Division_Desem"))),
+                                         column(6,card(full_screen = T,
+                                                       card_header("Suavizamiento Exponencial",
+                                                                   popover(
+                                                                     bsicons::bs_icon("bricks",class = "ms-auto"),
+                                                                     bslib::input_switch("ETS_Default","Modificar parámetros",F),
+                                                                     shiny::conditionalPanel(
+                                                                       condition = "input.ETS_Default == true",
+                                                                       sliderInput("Alpha_ETS_Desem",label = "Alpha (Nivel)",min = 0,max=1,value=0.3702011,step=0.01),
+                                                                       sliderInput("Beta_ETS_Desem",label = "Beta (Tendencia)",min=0,max=1,value=0.03144839,step=0.01),
+                                                                       sliderInput("Gamma_ETS_Desem",label = "Gamma (Estacionalidad)",min=0,max=1,value=0.3471283,step=0.01)
+                                                                     ),title = "Parámetros",
+                                                                     placement = "bottom"
+                                                                   ),class = 'd-flex align-items-center gap-1'),
+                                                        plotlyOutput("TestSuavExp_Desem"))),
+                                         column(6,navset_card_tab(
+                                           full_screen = TRUE,
+                                           title = "Diagnóstico ARMA",
+                                           nav_panel("Serie",plotlyOutput("ARMA_Est_Desem")),
+                                           nav_panel("ACF",plotOutput("ACF_ARMA_Desem")),
+                                           nav_panel("PACF",plotOutput("PACF_ARMA_Desem")),
+                                           nav_panel("Estimación",verbatimTextOutput("AR(1)_Desem")),
+                                           nav_panel("Residuos",plotlyOutput("AR1_Resid_Desem")),
+                                           nav_panel("ACF residuos",plotOutput("ACF_AR1_Desem")),
+                                           nav_panel("PACF residuos",plotOutput("PACF_AR1_Desem")),
+                                           nav_panel("Tests",verbatimTextOutput("TestsAR1_Desem")),
+                                           nav_panel("CUSUM",plotOutput("Cusum_AR1_Desem")),
+                                           nav_panel("CUSUMSQ",plotOutput("Cusumq_AR1_Desem"))
+                                         )),
+                                         column(6,),
+                                         column(6,)
+                                       )
+                                       
+                                     )
+                                     )#Fin nav_panel Modelos estadísticos
+                    
+                  ),#Fin nav_menu Tasa del desempleo
+                  
+                #:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+                # 2. PIB trimestral ------------------------------------------------------------
+                #::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+                nav_menu(title="PIB trimestral",
+                         #:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+                         ## 2.1 Análisis descriptivo ------------------------------------------------------------
+                         #::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+                         nav_panel(title="Análisis descriptivo",
+                                   layout_sidebar(
+                                     sidebar = sidebar(
+                                       selectInput(inputId = "AnioPIB_Desc",
+                                                   label = "Seleccione el año desde donde desea visualizar las series",
+                                                   choices = 2001:2023,
+                                                   selected = 2001,
+                                                   multiple = FALSE),
+                                       selectInput(inputId = "MesPIB_Desc",
+                                                   label = "Mes:",
+                                                   choices = c("Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"),
+                                                   selected = "Enero",
+                                                   multiple = FALSE),
+                                       width = 500,
+                                       open = TRUE,
+                                       fluid =T
+                                     ),
+                                     position = "left",
+                                     fillable = T,
+                                     fluidRow(
+                                       column(6,),
+                                       column(6,),
+                                       column(6,),
+                                       column(6,)
+                                     )
+                                     
+                                   )),#Fin nav_panel Análisis descriptivo
+                         
+                         #:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+                         ## 2.2 Aprendizaje automático ------------------------------------------------------------
+                         #::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+                         nav_panel(title = "Aprendizaje automático",
+                                   layout_sidebar(
+                                     position = "left",
+                                     fillable = F,
+                                     fluidRow(
+                                       column(6,),
+                                       column(6,),
+                                       column(6,),
+                                       column(6,)
+                                     )
+                                     
+                                   )
+                                   
+                         ),#Fin nav_panel Aprendizaje automático
+                         
+                         #:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+                         ## 2.3 Modelos estadísticos ------------------------------------------------------------
+                         #::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+                         nav_panel(title = "Modelos estadísticos",
+                                   layout_sidebar(
+                                     sidebar = sidebar(
+                                       selectInput(inputId = "AnioPIB_Mod",
+                                                   label = "Seleccione el año desde donde desea visualizar las series",
+                                                   choices = 2001:2023,
+                                                   selected = 2001,
+                                                   multiple = FALSE),
+                                       selectInput(inputId = "MesPIB_Mod",
+                                                   label = "Mes:",
+                                                   choices = c("Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"),
+                                                   selected = "Enero",
+                                                   multiple = FALSE),
+                                       width = 500,
+                                       open = TRUE,
+                                       fluid =T
+                                     ),
+                                     position = "left",
+                                     fillable = T,
+                                     fluidRow(
+                                       column(6,),
+                                       column(6,),
+                                       column(6,),
+                                       column(6,)
+                                     )
+                                     
+                                   )
+                         )#Fin nav_panel Modelos estadísticos
+                         
+                )
+                  
+
+                  
+                  )#Fin del UI
