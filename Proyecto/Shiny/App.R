@@ -56,7 +56,7 @@ library(fpp)
 
 
 Ruta<-"D:/Estadística/Semestres/Semestre 9/Series de Tiempo Univariadas/Shiny/"
-
+#Ruta<-"C:/Users/EQUIPO/Documents/GitHub/TimeSeries/Proyecto/Shiny/"
 
 # Desempleo ---------------------------------------------------------------
 
