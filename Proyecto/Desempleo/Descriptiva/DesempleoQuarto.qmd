@@ -904,6 +904,8 @@ lines(LQS,type="S",col="red")
 lines(LQI,type="S",col="red")
 
 ```
+Este modelo no logra pasar todos los supuestos pues parece haber autocorrelación no explicada, por lo que se aumentará el orden de q y Q para ver si se soluciona este problema.
+
 ### SARIMA(2,1,1)(2,1,1)
 
 ```{r}
@@ -1001,5 +1003,4 @@ plot_ly(x = time(test), y = test, type = 'scatter', mode = 'lines', color = I("r
   layout(title = 'Tasa de Desempleo vs Predicciones (Junio 2019-Diciembre 2023)',
          xaxis = list(title = 'Mes', rangeslider = list(type = 'date')))
 ```
-
 
