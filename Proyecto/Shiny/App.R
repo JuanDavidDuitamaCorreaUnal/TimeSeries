@@ -55,13 +55,14 @@ library(tsoutliers)
 library(fpp)
 
 
-Ruta<-"D:/Estadística/Semestres/Semestre 9/Series de Tiempo Univariadas/Shiny/"
+Ruta<-setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+#Ruta<-"D:/Estadística/Semestres/Semestre 9/Series de Tiempo Univariadas/Shiny/"
 #Ruta<-"C:/Users/EQUIPO/Documents/GitHub/TimeSeries/Proyecto/Shiny/"
 
 # Desempleo ---------------------------------------------------------------
 
 
-Desempleo <- read_excel(paste0(Ruta,"Datos/Desempleo.xlsx"), skip = 5, n_max = 276)
+Desempleo <- read_excel(paste0(Ruta,"/Datos/Desempleo.xlsx"), skip = 5, n_max = 276)
 Desempleo <- subset(Desempleo, select = -`Tasa de ocupación (%)`)
 colnames(Desempleo)<-c("AnioMes","TasaDesempleo")
 Desempleo$AnioMes<-paste0(Desempleo$AnioMes,"-01")
