@@ -53,11 +53,14 @@ library(aTSA)
 library(sarima)
 library(tsoutliers)
 library(fpp)
-
+library(here)
+library(DT)
 
 Ruta<-setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
-#Ruta<-"D:/Estadística/Semestres/Semestre 9/Series de Tiempo Univariadas/Shiny/"
-#Ruta<-"C:/Users/EQUIPO/Documents/GitHub/TimeSeries/Proyecto/Shiny/"
+#Ruta<- here::here()
+#Ruta<-"D:/Estadística/Semestres/Semestre 9/Series de Tiempo Univariadas/Shiny"
+setwd(Ruta)
+
 
 # Desempleo ---------------------------------------------------------------
 
@@ -144,12 +147,115 @@ LQI=-co+(1:length(resARPURO))/N
 
 ### ARIMA -------------------------------------------------------------------
 
+#####Ajuste del Modelo
+####Note que entramos la serie original
+AjusteArima151=forecast::Arima(DesempleoTS,order = c(15,1,1),lambda = 1)
+AjusteArimaRef=forecast::Arima(DesempleoTS,order = c(15,1,1),lambda = 1, fixed=c(NA,NA,NA,NA,NA,0,0,NA,0,NA,NA,NA,NA,0,NA,NA))
+
+residualesARIMA=AjusteArimaRef$residuals
+
+###Estad?sticas CUSUM
+resARIMA=residualesARIMA
+cum2=cumsum(resARIMA)/sd(resARIMA)
+N2=length(resARIMA)
+cumq2=cumsum(resARIMA^2)/sum(resARIMA^2)
+Af=0.948 ###Cuantil del 95% para la estad?stica cusum
+co=0.09821
+LS2=Af*sqrt(N2)+2*Af*c(1:length(resARIMA))/sqrt(N2)
+LI2=-LS2
+LQS2=co+(1:length(resARIMA))/N2
+LQI2=-co+(1:length(resARIMA))/N2
+
+#####Fase de Pronósticos
+pronosticos151=forecast::forecast(AjusteArimaRef,h=12,level=0.95)
+
+
+## SARIMA ------------------------------------------------------------------
+
+DdDesempleoTS=diff(DiferenciaOrd,lag=12)
+
+modeloSARIMA = Arima(DesempleoTS, c(0, 1, 0),seasonal = list(order = c(5, 1, 1), period = 12),lambda = 1)
+
+residualesSARIMA <- modeloSARIMA$residuals
+
+###Estad?ticas CUSUM
+resSARIMA=residualesSARIMA
+cum3=cumsum(resSARIMA)/sd(resSARIMA)
+N3=length(resSARIMA)
+cumq3=cumsum(resSARIMA^2)/sum(resSARIMA^2)
+Af3=0.948 ###Cuantil del 95% para la estad?stica cusum
+co3=0.09821####Valor del cuantil aproximado para cusumsq para 140
+LS3=Af3*sqrt(N3)+2*Af3*c(1:length(resSARIMA))/sqrt(N3)
+LI3=-LS3
+LQS3=co3+(1:length(resSARIMA))/N3
+LQI3=-co3+(1:length(resSARIMA))/N3
+
+
+
+#SARIMA definitivo con outliers
+
+modeloSARIMAdef = Arima(DesempleoTS, c(1, 1, 2),seasonal = list(order = c(2, 1, 1), period = 12),lambda = 1)
+resSARIMAdef <- modeloSARIMAdef$residuals
+n=length(DesempleoTS)
+coef=coefs2poly(modeloSARIMAdef)
+#coef
+outliers= tsoutliers::locate.outliers(resSARIMAdef,coef)
+###tstat se compara con C=3
+xreg = outliers.effects(outliers, n)
+
+SARIMA_out = update(modeloSARIMAdef, xreg = xreg)
+
+
+#Ahora sí los propios residuales
+residuales_propios <- SARIMA_out$residuals
+
+###Estad?ticas CUSUM
+res4=residuales_propios
+cum4=cumsum(res4)/sd(res4)
+N4=length(res4)
+cumq4=cumsum(res4^2)/sum(res4^2)
+Af4=0.948 ###Cuantil del 95% para la estad?stica cusum
+co4=0.09821####Valor del cuantil aproximado para cusumsq para 140
+LS4=Af4*sqrt(N4)+2*Af4*c(1:length(res4))/sqrt(N4)
+LI4=-LS4
+LQS4=co4+(1:length(res4))/N4
+LQI4=-co4+(1:length(res4))/N4
+
+#Rolling
+
+#SARIMA_out
+#refit <- Arima(DesempleoTS, model=fitmodelo)
+fc <- window(fitted(SARIMA_out), start=c(2019,6))
+
+esta_param_modelo<-coef(SARIMA_out)
+h <- 1
+train = window(DesempleoTS,end=time(DesempleoTS)[ntrain])
+test = window(DesempleoTS,start=time(DesempleoTS)[ntrain]+1/12)
+n <- length(test) - h + 1
+fitmodelo <- update(SARIMA_out,fixed=esta_param_modelo)
+fc <- ts(numeric(n), start=c(2019,6), freq=12)
+for(i in 1:n)
+{ 
+  x <- window(DesempleoTS, end=c(2019, 5+(i-1)))
+  refit <- forecast::Arima(x, model=fitmodelo, xreg = xreg[1:(221+(i-1)),])
+  fc[i] <- forecast::forecast(refit, h=h,xreg = t(as.matrix(xreg[(221+i),])))$mean[h]
+}
+dife=(test-fc)^2
+ecm=(1/(length(test)))*sum(dife)
+#ecm
+
+
+
+MSE_Desempleo <- data.frame(
+  Modelo = c("SARIMA", "Suavizamiento exponencial", "Árboles", "Red multicapa", "Red GRU"),
+  MSE = c(0.32, 3.75, 10.74, 6.55, 12.44)
+)
 
 
 # PIB ---------------------------------------------------------------------
 
 
-PIB3 <- read_excel(paste0(Ruta,"Datos/PIB.xlsx"), range = "AS18:AS93", col_names = FALSE)
+PIB3 <- read_excel(paste0(Ruta,"/Datos/PIB.xlsx"), range = "AS18:AS93", col_names = FALSE)
 PIB3 <- data.frame('Fecha'=seq.Date(from=as.Date("2005-03-01"),to=as.Date("2023-12-01"),by="quarter"),'PIBtrimestral'=PIB3$...1)
 #Objeto ts
 PIB3TS <- ts(PIB3, start = c(2005, 1), end = c(2023, 4), frequency = 4)
