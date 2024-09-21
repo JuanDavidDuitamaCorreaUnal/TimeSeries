@@ -96,6 +96,7 @@ server <- function(input,output,session){
   output[["Detec_Est_Desem_subser"]]<-renderPlot({
     monthplot(diff(DesempleoTS),main="Subseries(Diferencia Ordinaria)")
   })
+  
   #Boxplots
   output[["Detec_Est_Desem_boxplo"]]<-renderPlotly({
     tsibbleDesem<-as_tsibble(DesempleoTS)
@@ -142,9 +143,15 @@ server <- function(input,output,session){
   })
   
 
-### 1.7 Suavizamiento exponencial -----------------------------------------------
+## 2. Suavizamiento exponencial -----------------------------------------------
   
   output[["Division_Desem"]]<-renderPlotly({
+    plot_ly(x = seq.Date(from=as.Date("2001-01-01"),to=as.Date("2019-05-01"),by="month"), y = Train, type = 'scatter', mode = 'lines', color = I("red3"), name = "Entrenamiento") %>%
+      add_trace(x =seq.Date(from=as.Date("2019-06-01"),to=as.Date("2023-12-01"),by="month"),y = Test, mode = 'lines', line = list(color = 'blue'), name = "Prueba") %>%
+      layout(title = 'División entrenamiento y prueba',
+             xaxis = list(title = 'Mes'))
+  })
+  output[["Division_Desem2"]]<-renderPlotly({
     plot_ly(x = seq.Date(from=as.Date("2001-01-01"),to=as.Date("2019-05-01"),by="month"), y = Train, type = 'scatter', mode = 'lines', color = I("red3"), name = "Entrenamiento") %>%
       add_trace(x =seq.Date(from=as.Date("2019-06-01"),to=as.Date("2023-12-01"),by="month"),y = Test, mode = 'lines', line = list(color = 'blue'), name = "Prueba") %>%
       layout(title = 'División entrenamiento y prueba',
@@ -193,7 +200,7 @@ server <- function(input,output,session){
              xaxis = list(title = 'Mes'))
   })
 
-### 1.8 ARMA --------------------------------------------------------------------
+## 3. ARMA --------------------------------------------------------------------
 
   output[["ARMA_Est_Desem"]]<-renderPlotly({
     plot_ly(x = seq.Date(from=as.Date("2001-02-01"),to=as.Date("2023-12-01"),by="month"), y = DesempNSDiff, type = 'scatter', mode = 'lines', color = I("red3"), name = "Serie") %>%
@@ -247,6 +254,237 @@ server <- function(input,output,session){
     lines(LQI,type="S",col="red3")
     
   })
+
+## 4. ARIMA -------------------------------------------------------------------
+  
+  output[["Serie_inicial_ARIMA"]]<-renderPlotly({
+    plot_ly( x = Desempleo$AnioMes, y = Desempleo$TasaDesempleo, type = 'scatter', mode = 'lines',color=I("red3")) %>%
+      layout(title = 'Tasa de Desempleo mensual en Colombia',
+             xaxis = list(title = 'Mes'))
+  })
+  
+  output[["Pruebas_Raiz1_Desem"]]<-renderPrint({
+    
+    cat("Identificando el rezago:\n")
+    print(ar(DesempleoTS)) ##Selecciona un modelo AR usando el crierio de Akaike  a la serie Aaa
+    cat("Pruebas de raíz unitaria:\n")
+    print(aTSA::adf.test(DesempleoTS,nlag = 14)) #Toca usar el rezago que da ar() + 1
+    print(summary(ur.df(DesempleoTS,type="none",lags = 12)))
+    print(summary(ur.df(DesempleoTS,type="drift",lags = 12)))
+    
+  })
+
+  output[["ARIMA_Diferenciada_Desem"]]<-renderPlotly({
+    plot_ly(x = seq.Date(from=as.Date("2001-01-01"),to=as.Date("2023-12-01"),by="month"), y = DiferenciaOrd, type = 'scatter', mode = 'lines', color = I("red3"), name = "Serie") %>%
+      layout(title = 'Serie con Diferencia ordinaria',
+             xaxis = list(title = 'Mes'))
+  })
+  
+  output[["Pruebas_Raiz2_Desem"]]<-renderPrint({
+    cat("Identificando el rezago:\n")
+    print(ar(DiferenciaOrd))
+    cat("Pruebas de raíz unitaria:\n")
+    print(aTSA::adf.test(DiferenciaOrd,nlag = 25))
+    print(summary(ur.df(DiferenciaOrd,type="none",lags = 23)))
+  })
+  
+  output[["ACF_serie_difer_ARIMA_Desem"]]<-renderPlot({
+    acf(DiferenciaOrd,lag.max = 120,ci.type='ma')
+  })
+  
+  output[["PACF_serie_difer_ARIMA_Desem"]]<-renderPlot({
+    pacf(DiferenciaOrd)
+  })
+  
+  # output[["ARIMA_auto_Desem"]]<-renderPrint({
+  #   modelo.automatico1=auto.arima(DiferenciaOrd,d=0,D=0,max.p=24,max.q=60,start.p=0, start.q=0,seasonal=FALSE,max.order=24,stationary=TRUE,ic="aicc",stepwise=FALSE,allowmean = TRUE)
+  #   cat("Automático:\n")
+  #   print(modelo.automatico1)
+  # })
+  output[["Ajuste_ARIMA_Desemp"]]<-renderPrint({
+    cat("Ajuste modelo ARIMA(15,1,1):\n ")
+    print(summary(AjusteArima151))
+    print(coeftest(AjusteArima151))
+    cat("Refinamiento requerido:")
+  })
+  
+  output[["Residuos_ARIMA_Desem"]]<-renderPlotly({
+    plot_ly(x = seq.Date(from=as.Date("2001-01-01"),to=as.Date("2023-12-01"),by="month"), y = residualesARIMA, type = 'scatter', mode = 'lines', color = I("red3"), name = "Residuales") %>%
+      layout(title = 'Residuales Modelo ARIMA(15,1,1)',
+             xaxis = list(title = 'Mes'))
+  })
+  
+  output[["ACF_ARIMA_Desem"]]<-renderPlot({
+    acf(residualesARIMA,lag.max = 48)
+  })
+  
+  output[["PACF_ARIMA_Desem"]]<-renderPlot({
+    pacf(residualesARIMA)
+  })
+  
+  output[["TestsARIMA_Desem"]]<-renderPrint({
+    cat("Test de autocorrelación:\n")
+    print(Box.test(residualesARIMA, lag =30 , type = "Ljung-Box", fitdf = 12))
+    
+    cat("Test de normalidad:\n")
+    print(jarque.bera.test(residualesARIMA) )
+  })
+  
+  output[["Cusum_ARIMA_Desem"]]<-renderPlot({
+    plot(cum2,type="l",ylim=c(min(LI2),max(LS2)),xlab="t",ylab="",main="CUSUM")
+    lines(LS2,type="S",col="red")
+    lines(LI2,type="S",col="red")
+  })
+  
+  output[["Cusumq_ARIMA_Desem"]]<-renderPlot({
+    plot(cumq2,type="l",xlab="t",ylab="",main="CUSUMSQ")                      
+    lines(LQS2,type="S",col="red")                                                                           
+    lines(LQI2,type="S",col="red")
+  })
+  
+  output[["Pronosticos_ARIMA_desem"]]<-renderPlot({
+    plot(pronosticos151)
+  })
+  
+
+## 5. SARIMA ---------------------------------------------------------------
+  output[["Serie_inicial_SARIMA"]]<-renderPlotly({
+    plot_ly( x = Desempleo$AnioMes, y = Desempleo$TasaDesempleo, type = 'scatter', mode = 'lines',color=I("red3")) %>%
+      layout(title = 'Tasa de Desempleo mensual en Colombia',
+             xaxis = list(title = 'Mes'))
+  })
   
   
+  output[["SARIMA_Diferenciada_Desem"]]<-renderPlotly({
+    plot_ly(x = seq.Date(from=as.Date("2001-02-01"),to=as.Date("2023-12-01"),by="month"), y = DiferenciaOrd, type = 'scatter', mode = 'lines', color = I("red3"), name = "Serie") %>%
+      layout(title = 'Serie con Diferencia ordinaria',
+             xaxis = list(title = 'Mes'))
+  })
+  
+  output[["SARIMA_Diferenciada_est_Desem"]]<-renderPlotly({
+    plot_ly(x = seq.Date(from=as.Date("2002-02-01"),to=as.Date("2023-12-01"),by="month"), y = DdDesempleoTS, type = 'scatter', mode = 'lines', color = I("red3"), name = "Serie") %>%
+      layout(title = 'Serie sin tendencia y estacionalidad (Diferencia)',
+             xaxis = list(title = 'Mes'))
+  })
+  
+  output[["Subseries_SARIMA_Desem"]]<-renderPlot({
+    monthplot(DdDesempleoTS)  
+  })
+  
+  
+  output[["ACF_serie_difest_SARIMA_Desem"]]<-renderPlot({
+    acf(DdDesempleoTS,lag.max = 48, ci.type='ma')
+  })
+  
+  output[["PACF_serie_difest_SARIMA_Desem"]]<-renderPlot({
+    pacf(DdDesempleoTS,lag.max = 120)  
+  })
+  
+  output[["Primer_Estim_SARIMA_Desem"]]<-renderPrint({
+    print(coeftest(modeloSARIMA))
+  })
+  
+  output[["Primer_Residuos_SARIMA_Desem"]]<-renderPlotly({
+    plot_ly(x = seq.Date(from=as.Date("2001-01-01"),to=as.Date("2023-12-01"),by="month"), y = residualesSARIMA, type = 'scatter', mode = 'lines', color = I("red3"), name = "Residuos") %>%
+      layout(title = 'Residuales SARIMA(0,1,0)(5,1,1)_12',
+             xaxis = list(title = 'Mes'))
+  })
+  
+  output[["ACF_Resid1_SARIMA_Desem"]]<-renderPlot({
+    acf(residualesSARIMA,lag.max = 50)
+  })
+  
+  output[["PACF_Resid1_SARIMA_Desem"]]<-renderPlot({
+    pacf(residualesSARIMA,lag.max = 50)
+  })
+  
+  output[["Test_Resid1_SARIMA_Desem1"]]<-renderPrint({
+    #Test de autocorrelaci?n
+    cat("Test de autocorrelación:\n")
+    print(Box.test(residualesSARIMA, lag = (length(residualesSARIMA)/4), type = "Ljung-Box", fitdf = 5))
+    #Test de normalidad
+    cat("Test de Normalidad:\n")
+    print(jarque.bera.test(residualesSARIMA))
+  })
+  
+  
+  output[["Cusum_SARIMA1_Desem"]]<-renderPlot({
+    plot(cum3,type="l",ylim=c(min(LI3),max(LS3)),xlab="t",ylab="",main="CUSUM")
+    lines(LS3,type="S",col="red")
+    lines(LI3,type="S",col="red")
+  })
+  
+  output[["Cusumq_SARIMA1_Desem"]]<-renderPlot({
+    plot(cumq3,type="l",xlab="t",ylab="",main="CUSUMSQ")
+    lines(LQS3,type="S",col="red")
+    lines(LQI3,type="S",col="red")
+  })
+  
+  #SARIMA definitivo
+  
+  output[["Outliers_SARIMA_Desem"]]<-renderPrint({
+    print(outliers)
+  })
+  
+  output[["Coef_defini_SARIMA_Desem"]]<-renderPrint({
+    print(SARIMA_out)
+  })
+  
+  output[["Segund_Residuos_SARIMA_Desem"]]<-renderPlotly({
+    plot_ly(x = time(residuales_propios), y = residuales_propios, type = 'scatter', mode = 'lines', color = I("red3"), name = "Residuos") %>%
+      layout(title = 'Residuales SARIMA(2,1,1)(2,1,1)_12',
+             xaxis = list(title = 'Mes'))
+  })
+  
+  output[["ACF_supremo_Desem"]]<-renderPlot({
+    acf(residuales_propios,lag.max = 50)
+  })
+  
+  output[["PACF_supremo_Desem"]]<-renderPlot({
+    pacf(residuales_propios,lag.max = 50)
+  })
+  
+  output[["Tests_Definitivos_Desem"]]<-renderPrint({
+    cat("Test de autocorrelación:\n")
+    #Test de autocorrelaci?n
+    print(Box.test(residuales_propios, lag = (length(residuales_propios)/4), type = "Ljung-Box", fitdf = 16))
+    cat("Test de normalidad:\n")
+    #Test de normalidad
+    print(jarque.bera.test(residuales_propios))
+  })
+  
+  output[["CUSUM_SARIMA_definitivo_Desem"]]<-renderPlot({
+    plot(cum4,type="l",ylim=c(min(LI4),max(LS4)),xlab="t",ylab="",main="CUSUM")
+    lines(LS4,type="S",col="red")
+    lines(LI4,type="S",col="red")
+  })
+  
+  output[["CUSUMSQ_SARIMA_definitivo_Desem"]]<-renderPlot({
+    #CUSUM Square
+    plot(cumq4,type="l",xlab="t",ylab="",main="CUSUMSQ")                      
+    lines(LQS4,type="S",col="red")                                                                           
+    lines(LQI4,type="S",col="red")
+  })
+  
+  output[["Rolling_definitivo_SARIMA_Desem"]]<-renderPlotly({
+    plot_ly(x = time(test), y = test, type = 'scatter', mode = 'lines', color = I("red"), name = "TasaDesempleo") %>%
+      add_trace(y = fc, mode = 'lines', line = list(color = 'blue'), name = "Predicciones") %>%
+      layout(title = 'Tasa de Desempleo vs Predicciones (Junio 2019-Diciembre 2023)',
+             xaxis = list(title = 'Mes'))
+  })
+  
+  #Resumen de MSE
+  
+  
+    # Mostrar la tabla proporcionada
+    output[["model_table"]] <- renderDT({
+      datatable(MSE_Desempleo, options = list(
+        scrollY = "100vh",  # Ajustar la altura de la tabla al tamaño de la ventana
+        paging = FALSE,     # Deshabilitar paginación
+        searching = FALSE,  # Deshabilitar la búsqueda
+        scrollX = TRUE      # Habilitar scroll horizontal si es necesario
+      ))
+    })
+  
+
 }
