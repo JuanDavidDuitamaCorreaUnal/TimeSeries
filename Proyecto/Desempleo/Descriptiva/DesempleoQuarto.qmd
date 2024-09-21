@@ -930,15 +930,15 @@ plot(residuales)
 acf(residuales,lag.max = 50)
 pacf(residuales,lag.max = 50)
 #Test de autocorrelaci?n
-Box.test(residuales, lag = (length(residualesSARIMA)/4), type = "Ljung-Box", fitdf = 16)
+Box.test(residuales, lag = (length(residuales)/4), type = "Ljung-Box", fitdf = 16)
 ######Análisis de Outliers
 #Test de normalidad
-jarque.bera.test(residualesSARIMA)
+jarque.bera.test(residuales)
 
 
 
 ###Estad?ticas CUSUM
-res=residualesSARIMA
+res=residuales
 cum=cumsum(res)/sd(res)
 N=length(res)
 cumq=cumsum(res^2)/sum(res^2)
