@@ -453,7 +453,7 @@ suav_inputs=cbind(seq(0.001,0.999,0.1),seq(0.001,0.999,0.1),seq(0.001,0.999,0.1)
 colnames(suav_inputs)<-c("alpha","beta","gamma")
 suav_inputs_tbl=tibble::as_tibble(suav_inputs)
 grilla_suav=expand.grid(alpha=suav_inputs_tbl$alpha,beta=suav_inputs_tbl$beta,gamma=suav_inputs_tbl$gamma) ##Grilla de Valores
-####Se crean las ventanas de rolling y se obtiene los h-pronósticos para cada ventana(hay ntest posibles ventanas)
+####Se crean las ventanas de rolling y se obUntiene los h-pronósticos para cada ventana(hay ntest posibles ventanas)
 for(i in 1:(ntest)){
   x=window(DesempleoTS,end=time(DesempleoTS)[ntrain]+(i-1)/12)
   print(length(x))
@@ -973,6 +973,53 @@ outliersFINAL
 
 Ya no hay más outliers, por lo que se procederá a evaluar su ECM de la predicción un paso adelante haciendo rolling.
 
+## Modelo con el conjunto de entrenamiento
+
+```{r}
+train = window(DesempleoTS,end=time(DesempleoTS)[ntrain])
+test = window(DesempleoTS,start=time(DesempleoTS)[ntrain]+1/12)
+
+SARIMAtrain = Arima(train, c(1, 1, 2),seasonal = list(order = c(2, 1, 1), period = 12),lambda = 1)
+resSARIMAtrain <- SARIMAtrain$residuals
+coeftrain=coefs2poly(SARIMAtrain)
+outliers= tsoutliers::locate.outliers(resSARIMAtrain,coeftrain)
+outliers###tstat se compara con C=3
+xregtrain = outliers.effects(outliers, ntrain)
+
+SARIMAtrain_out = update(SARIMAtrain, xreg = xregtrain)
+SARIMAtrain_out
+```
+
+```{r}
+SARIMAtrain_out
+#refit <- Arima(DesempleoTS, model=fitmodelo)
+#fc <- window(fitted(SARIMA_out), start=c(2019,6))
+
+esta_param_modelo<-coef(SARIMAtrain_out)
+h <- 1
+n <- length(test) - h + 1
+xregtest = cbind(matrix(0,n,2),matrix(1,n,4),matrix(0,n,1))
+xregro <- rbind(xregtrain,xregtest)
+fitmodelo <- update(SARIMAtrain_out,fixed=esta_param_modelo)
+fc <- ts(numeric(n), start=c(2019,6), freq=12)
+for(i in 1:n){ 
+  x <- window(DesempleoTS, end=c(2019, 5+(i-1)))
+  refit <- forecast::Arima(x, model=fitmodelo, xreg = xregro[1:(221+(i-1)),])
+  fc[i] <- forecast::forecast(refit, h=h,xreg = t(as.matrix(xregro[(221+i),])))$mean[h]
+}
+dife=(test-fc)^2
+ecm=(1/(length(test)))*sum(dife)
+ecm
+```
+
+```{r}
+plot_ly(x = time(test), y = test, type = 'scatter', mode = 'lines', color = I("red"), name = "TasaDesempleo") %>%
+  add_trace(y = fc, mode = 'lines', line = list(color = 'blue'), name = "Predicciones") %>%
+  layout(title = 'Tasa de Desempleo vs Predicciones (Junio 2019-Diciembre 2023)',
+         xaxis = list(title = 'Mes', rangeslider = list(type = 'date')))
+```
+
+
 ## Rolling modelo SARIMA final
 
 ```{r}
@@ -1004,3 +1051,56 @@ plot_ly(x = time(test), y = test, type = 'scatter', mode = 'lines', color = I("r
   layout(title = 'Tasa de Desempleo vs Predicciones (Junio 2019-Diciembre 2023)',
          xaxis = list(title = 'Mes', rangeslider = list(type = 'date')))
 ```
+
+## Rolling con datos recientes 
+
+```{r}
+newdata <- read_excel("C:/Users/EQUIPO/Documents/GitHub/TimeSeries/Proyecto/Desempleo/anex-GEIH-jul2024.xlsx", sheet = "Total nacional", range = "JR17:JX17",col_names = F)
+newdata <- as.data.frame(t(newdata[1,]))
+newdataTS <- ts((newdata), start = c(2024, 1), end = c(2024, 7), frequency = 12)
+```
+```{r}
+SARIMA_out
+#refit <- Arima(DesempleoTS, model=fitmodelo)
+#fc <- window(fitted(SARIMA_out), start=c(2019,6))
+
+esta_param_modelo<-coef(SARIMA_out)
+h <- 1
+train = DesempleoTS
+test = newdataTS
+n <- length(test) - h + 1
+fitmodelo <- update(SARIMA_out,fixed=esta_param_modelo)
+fc <- ts(numeric(n), start=c(2024,1), freq=12)
+xregtemp = cbind(matrix(0,n,5),matrix(1,n,4),matrix(0,n,2))
+xregnew <- rbind(xreg,xregtemp)
+
+DesempTSnew <- ts(c(DesempleoTS, newdataTS), start = start(DesempleoTS), frequency = 12)
+
+for(i in 1:n){ 
+  x <- window(DesempTSnew, end=c(2023, 12+(i-1)))
+  refit <- forecast::Arima(x, model=fitmodelo, xreg = xregnew[1:(276+(i-1)),])
+  fc[i] <- forecast::forecast(refit, h=h,xreg = t(as.matrix(xregnew[277,])))$mean[h]
+}
+dife=(test-fc)^2
+ecm=(1/(length(test)))*sum(dife)
+ecm
+```
+
+```{r}
+plot_ly(x = time(test), y = test, type = 'scatter', mode = 'lines', color = I("red"), name = "TasaDesempleo") %>%
+  add_trace(y = fc, mode = 'lines', line = list(color = 'blue'), name = "Predicciones") %>%
+  layout(title = 'Tasa de Desempleo vs Predicciones (Junio 2019-Diciembre 2023)',
+         xaxis = list(title = 'Mes', rangeslider = list(type = 'date')))
+```
+
+## SARIMA que pasó los supuestos vs Datos reales
+
+```{r}
+plot_ly(x = time(DesempleoTS), y = DesempleoTS, type = 'scatter', mode = 'lines', color = I("red"), name = "TasaDesempleo") %>%
+  add_trace(y = SARIMA_out$fitted, mode = 'lines', line = list(color = 'blue'), name = "Predicciones") %>%
+  layout(title = 'Tasa de Desempleo vs Predicciones (Junio 2019-Diciembre 2023)',
+         xaxis = list(title = 'Mes', rangeslider = list(type = 'date')))
+```
+
+
+
