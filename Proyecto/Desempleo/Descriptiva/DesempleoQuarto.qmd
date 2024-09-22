@@ -906,10 +906,10 @@ lines(LQI,type="S",col="red")
 
 Este modelo no logra pasar todos los supuestos pues parece haber autocorrelación no explicada, por lo que se aumentará el orden de q y Q para ver si se soluciona este problema.
 
-### SARIMA(2,1,1)(2,1,1)
+### SARIMA(1,1,2)(2,1,1)
 
 ```{r}
-modeloSARIMA = Arima(DesempleoTS, c(2, 1, 1),seasonal = list(order = c(2, 1, 1), period = 12),lambda = 1)
+modeloSARIMA = Arima(DesempleoTS, c(1, 1, 2),seasonal = list(order = c(2, 1, 1), period = 12),lambda = 1)
 resSARIMA <- modeloSARIMA$residuals
 n=length(DesempleoTS)
 coef=coefs2poly(modeloSARIMA)
@@ -930,15 +930,15 @@ plot(residuales)
 acf(residuales,lag.max = 50)
 pacf(residuales,lag.max = 50)
 #Test de autocorrelaci?n
-Box.test(residuales, lag = (length(residualesSARIMA)/4), type = "Ljung-Box", fitdf = 16)
+Box.test(residuales, lag = (length(residuales)/4), type = "Ljung-Box", fitdf = 16)
 ######Análisis de Outliers
 #Test de normalidad
-jarque.bera.test(residualesSARIMA)
+jarque.bera.test(residuales)
 
 
 
 ###Estad?ticas CUSUM
-res=residualesSARIMA
+res=residuales
 cum=cumsum(res)/sd(res)
 N=length(res)
 cumq=cumsum(res^2)/sum(res^2)
