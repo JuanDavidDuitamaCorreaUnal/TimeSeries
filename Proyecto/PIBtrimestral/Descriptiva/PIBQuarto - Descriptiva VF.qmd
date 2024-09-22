@@ -285,6 +285,7 @@ t(Valoresretornados1$holdout)## Permiten verificar los verdaderos valores h-paso
 t(Valoresretornados1$mean) 
 apply((Valoresretornados1$holdout -Valoresretornados1$mean)^2,1,mean,na.rm=TRUE) ### Se calcula el error cuadrático medio de predicción
 ```
+
 ```{r}
 #'c': Se ajusta una constante (serie estacionaria alrededor de una media constante).
 #'ct': Se ajusta una constante y una tendencia lineal (serie estacionaria alrededor de una tendencia lineal).
@@ -412,6 +413,7 @@ ggplot(test_graf, aes(x = Tiempo)) +
 ```
 
 ## 11. Outliers
+
 ```{r}
 coef=coefs2poly(modelo_ajustado)
 coef
