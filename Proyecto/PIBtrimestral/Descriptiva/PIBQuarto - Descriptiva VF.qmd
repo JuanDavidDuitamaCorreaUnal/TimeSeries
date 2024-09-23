@@ -83,9 +83,9 @@ MASS::boxcox(lm(PIB3TS ~ 1),seq(-3, 3, length = 50))
 
 Con el Boxcox, se confirma que $\lambda$ tiene un valor cercano a 1, pero que abarca el 0 en su intervalo de confianza.
 
-### Extracción de la tendencia
+### Estimación y Extracción de la tendencia
 
-#### Estimación mediante un modelo lineal
+#### Modelo Lineal
 
 A continuación, se realiza un modelo de regresión lineal simple utilizando como variable regresora el tiempo, y como variable de estudio, el PIB trimestral.
 
@@ -93,7 +93,6 @@ A continuación, se realiza un modelo de regresión lineal simple utilizando com
 summary(fitLM <- lm(PIB3TS~time(PIB3TS), na.action=NULL))#Creando un modelo de regresión lineal
 plot(PIB3TS, ylab="PIB trimestral en Colombia",xlab="Trimestre") 
 abline(fitLM,col = "red")
-
 ```
 
 Haciendo una revisión meramente visual, el modelo lineal resultante logra capturar el comportamiento creciente del PIB trimestral, ignorando el suceso ocurrido en 2020 claramente. La serie resultante de extraer esta tendencia lineal es la siguiente.
@@ -107,75 +106,111 @@ plot_ly( x = time(PIB3NoLM), y = PIB3NoLM, type = 'scatter', mode = 'lines',colo
 
 Al realizar la extracción respectiva, la serie resultante no es adecuada para continuar con el análisis, puesto que el valle resultante de la extracción en años de pandemia perjudica los próximos procedimientos. Lo cual provocaría que al realizar predicciones bajo el modelo lineal, éstas sean subajustadas.
 
+#### No Paramétrica
+
+```{r}
+# Estimación de tendencia con STL
+indice1 <- as.Date(as.yearmon(tk_index(PIB3TS)))
+indice1.1 <- yearmonth(as.yearmon(tk_index(PIB3TS)))
+df_PIB <- data.frame(Fecha=indice1,PIB=as.matrix(PIB3TS))
+colnames(df_PIB)[2]<-"PIB"
+
+# Haciendo el objeto Tsibble
+PIB_tsibble <- as_tsibble(df_PIB)
+str(PIB_tsibble)
+
+df_PIB%>%timetk::plot_time_series(Fecha, PIB,
+                   .interactive = TRUE,
+                   .plotly_slider = TRUE)
+
+###Ajuste STL moviendo los parámetros
+df_PIB%>%mutate(PIB_Mod=smooth_vec(PIB,span = 0.2, degree = 2))%>%
+  ggplot(aes(Fecha, PIB)) +
+    geom_line() +
+    geom_line(aes(y = PIB_Mod), color = "red")
+```
+
+En este caso, la estimación no paramétrica gráficamente logra captar el comportamiento de la serie, incluyendo el periodo de pandemia.
+
+Ahoa bien, vamos a ver una serie de tiempo con tendencia estimada por métodos no paramétricos extraída, con el fin de observar si la estimación no paramétrica describe mejor el comportamiento del PIB trimestral.
+
+```{r}
+# Extracción de tendencia STL
+STLextra_PIB<-PIB3TS-smooth_vec(PIB3TS,span = 0.2, degree = 2)
+plot_ly(x = time(STLextra_PIB), y = STLextra_PIB, type = 'scatter', mode = 'lines',color=I("red")) %>%
+  layout(title = 'PIB Trimestral en Colombia con tendencia STL extraída',
+         xaxis = list(title = 'Trimestre', rangeslider = list(type = 'date')))
+```
+
+Note que la componente de error sigue teniendo un pico muy bajo en los meses en que ocurrió la pandemia. Sin embargo, si no tuviésemos en cuenta el periodo de pandemia, el modelo no paramétrico tiene componente de error muy bajos en años anteriores, lo cual es un buen indicador.
+
 #### Diferencia ordinaria
 
 ```{r}
-DiferenciaOrd<-diff(PIB3TS)
-plot_ly( x = time(DiferenciaOrd), y = DiferenciaOrd, type = 'scatter', mode = 'lines',color=I("red")) %>%
+Dif_ord_PIB<-diff(PIB3TS)
+plot_ly(x = time(Dif_ord_PIB), y = Dif_ord_PIB, type = 'scatter', mode = 'lines',color=I("red")) %>%
   layout(title = 'PIB sin tendencia(Diferencia Ordinaria, lag=1)',
          xaxis = list(title = 'Trimestre', rangeslider = list(type = 'date')))
 ```
 
 Las conclusiones al extraer la tendencia, mediante diferencia ordinaria, mantienen el mismo punto que la extracción mediante tendencia lineal. Por lo tanto, en algunos de los apartados trabajaremos con los datos originales.
 
+#### Promedio Móvil
+
+```{r}
+PIBcomProm <- decompose(PIB3TS)
+plot(PIBcomProm)
+ExtraProm=PIB3TS-PIBcomProm$trend
+plot_ly( x = time(ExtraProm), y = ExtraProm, type = 'scatter', mode = 'lines',color=I("red")) %>%
+  layout(title = 'PIB con tendencia extraída (Promedio móvil)',
+         xaxis = list(title = 'Trimestre', rangeslider = list(type = 'date')))
+```
+
 #### Comparando las funciones de autocorrelación de las series sin tendencia
 
 ```{r}
 acf(PIB3TS,lag.max = length(PIB3TS))
 
-par(mfrow = c(1, 1))
+par(mfrow = c(2, 2))
 acf(PIB3NoLM,lag.max =length(PIB3NoLM),main="Autocorrelación serie sin tendencia lineal")
-acf(DiferenciaOrd,lag.max =length(DiferenciaOrd),main="Autocorrelación serie sin tendencia\npor diferencia ordinaria")
+acf(STLextra_PIB,lag.max =length(STLextra_PIB),main="Autocorrelación serie sin tendencia STL")
+acf(Dif_ord_PIB,lag.max =length(Dif_ord_PIB),main="Autocorrelación serie sin tendencia\npor diferencia ordinaria")
+acf(ExtraProm[3:74],lag.max =length(ExtraProm[3:74]),main="Autocorrelación serie sin tendencia\npor promedio móvil")
 ```
-
 ### Explorando relaciones no lineales
 
 #### Gráficos de retardos
 
-El gráfico de retardos indica que hay una relación lineal con el retardo número 4 en la serie con tendencia extraída por diferencia ordinaria.
+El gráfico de retardos indica que hay una relación lineal con el retardo número 4.
 
 ```{r}
 #El gráfico de retardos se realiza con la serie con tendencia extraída
 
 #Tendencia extraída por diferencia ordinaria
 par(mar = c(3,2,3,2))
-lag1.plot(DiferenciaOrd, 4,corr=T)
+lag1.plot(Dif_ord_PIB, 4,corr=T)
 ```
 
 ### Detección de estacionalidad
 
-Un primer gráfico propuesto para la detección de la estacionalidad de forma visual es el siguiente, recordemos que está siendo aplicado en la serie con la tendencia extraída.
+Un primer gráfico propuesto para la detección de la estacionalidad de forma visual es el siguiente, recordemos que está siendo aplicado en la serie con la tendencia extraída por diferencia ordinaria.
 
 ```{r}
 #Tendencia extraída por diferencia ordinaria
-TSstudio::ts_heatmap(DiferenciaOrd,title = "Mapa de Calor - PIB en Colombia(Diferencia Ordinaria)")
+TSstudio::ts_heatmap(Dif_ord_PIB,title = "Mapa de Calor - PIB en Colombia(Diferencia Ordinaria)")
 ```
 
 ```{r}
-monthplot(DiferenciaOrd,main="Subseries(Diferencia Ordinaria)")
+monthplot(Dif_ord_PIB,main="Subseries(Diferencia Ordinaria)")
 ```
 
 Otra alternativa es utilizar los gráficos de cajas
 
 ```{r}
-indice1=as.Date(as.yearmon(tk_index(PIB3TS)))#Convirtiendo en fecha el indice del PIB, deja como primero de enero cada fecha
-indice1.1=yearmon(as.yearmon(tk_index(PIB3TS)))
-
-## Haciendo el objeto tsibble
-df=data.frame(Fecha=indice1,PIB=as.matrix(PIB3TS))
-colnames(df)[2]<-"PIB"
-PIB3TSibble=as_tsibble(df)
-## Haciendo el objeto tsibble
-df=data.frame(Fecha=indice1,PIB=as.matrix(PIB3TS))
-colnames(df)[2]<-"PIB"
-PIB3TSibble=as_tsibble(df)
-```
-
-```{r}
-PIB3TSibble <- PIB3TSibble %>%
+PIB_tsibble <- PIB_tsibble %>%
   mutate(index = as.Date(Fecha))
-PIB3TSibble<-PIB3TSibble%>%mutate(Diferencia=PIB-lag(PIB))
-PIB3TSibble %>%
+PIB_tsibble<-PIB_tsibble%>%mutate(Diferencia=PIB-lag(PIB))
+PIB_tsibble %>%
   na.omit() %>%
   plot_seasonal_diagnostics(.date_var = index, .value = Diferencia, .feature_set = c("quarter"), .geom = "boxplot")
 ```
@@ -183,12 +218,12 @@ PIB3TSibble %>%
 Finalmente, un gráfico con las estimaciones de las densidades.
 
 ```{r}
-ggplot(PIB3TSibble %>%na.omit()|>
+ggplot(PIB_tsibble %>%na.omit()|>
     mutate(
         Trimestre = str_c("Trimestre ", as.character(lubridate::quarter(index)))
     ), aes(x = Diferencia)) +
       geom_density(aes(fill = Trimestre)) +
-      ggtitle("LosPass - Estimación de la densidad vía Kernel por trimestre") +
+      ggtitle("Estimación de la densidad vía Kernel por trimestre") +
       facet_grid(rows = vars(as.factor(Trimestre)))
 ```
 
@@ -196,7 +231,7 @@ ggplot(PIB3TSibble %>%na.omit()|>
 
 ```{r}
 #Diferencia ordinaria
-PeriodgramadTra=spectrum(as.numeric(DiferenciaOrd),log='no')
+PeriodgramadTra=spectrum(as.numeric(Dif_ord_PIB),log='no')
 ubicacion=which.max(PeriodgramadTra$spec)
 
 sprintf("El valor de la frecuencia donde se máximiza el periodograma para la serie con tendencia extraída por diferencia ordinaria es: %s",PeriodgramadTra$freq[ubicacion])
@@ -205,6 +240,70 @@ sprintf("El periodo correspondiente es aproximadamente: %s",1/PeriodgramadTra$fr
 ```
 
 De acuerdo a la información reportada en el gráfico de periodograma, no es necesario modelar la estacionalidad.
+
+#### Estimación y Extracción vía componentes de Fourier y Variables Dummy
+
+```{r}
+DiferTSibl<-as_tsibble(Dif_ord_PIB)
+DiferTSibl
+
+###Explore diferentes valores de K
+Modelo_serie_diff<-DiferTSibl|>model(
+  `Fourier1Desempleo`=ARIMA(value~fourier(K=2)+pdq(0, 0, 0) + PDQ(0, 0, 0))#En este caso se hace con tres componentes de Fourier
+  
+)
+
+real_ajustado1<-DiferTSibl%>%left_join(fitted(Modelo_serie_diff,by=index))#%>%select(-.model) 
+
+plot_ly(x = time(Dif_ord_PIB), y = Dif_ord_PIB, type = 'scatter', mode = 'lines', color = I("red"), name = "Serie1") %>%
+  add_trace(y = real_ajustado1$.fitted, mode = 'lines', line = list(color = 'blue'), name = "Ajuste Armónico") %>%
+  layout(title = 'PIB Trimestral sin tendencia (Diferencia Ordinaria, lag=1)',
+         xaxis = list(title = 'Trimestre', rangeslider = list(type = 'date')))
+
+#####Ajuste Dummy
+
+ModeloDummy<-DiferTSibl|>model(
+  `DummyDesempleoDiff`=ARIMA(value~season()+pdq(0, 0, 0) + PDQ(0, 0, 0))
+  
+)
+real_ajustado2<-DiferTSibl%>%left_join(fitted(ModeloDummy,by=index))#%>%select(-.model) 
+
+
+plot_ly(x = time(Dif_ord_PIB), y = Dif_ord_PIB, type = 'scatter', mode = 'lines', color = I("red"), name = "Serie1") %>%
+  add_trace(y = real_ajustado2$.fitted, mode = 'lines', line = list(color = 'blue'), name = "Ajuste Dummy") %>%
+  layout(title = 'PIB Trimestral sin tendencia (Diferencia Ordinaria, lag=1)',
+         xaxis = list(title = 'Trimestre', rangeslider = list(type = 'date')))
+
+#### Varios modelos al mismo tiempo
+
+ajuste_final_models<-DiferTSibl%>%model(
+ `Fourier1DesempleoDiff`=ARIMA(value~fourier(K=1)+pdq(0, 0, 0) + PDQ(0, 0, 0)),#1 componente de Fourier
+ `Fourier2DesempleoDiff`=ARIMA(value~fourier(K=2)+pdq(0, 0, 0) + PDQ(0, 0, 0)),#2 componente de Fourier
+`DummyDesempleoDiff`=ARIMA(value~season()+pdq(0, 0, 0) + PDQ(0, 0, 0))#Ajuste dummy
+                                        )
+
+glance(ajuste_final_models)
+
+Modelo_serie_diff_models<-DiferTSibl%>%left_join(fitted(ajuste_final_models)|>group_by(.model)%>%
+    pivot_wider(names_from = .model, values_from = .fitted))
+
+plot_ly(x = time(Dif_ord_PIB), y = Dif_ord_PIB, type = 'scatter', mode = 'lines', color = I("red"), name = "SerieDifOrd") %>%
+add_trace(y = Modelo_serie_diff_models$Fourier1DesempleoDiff, mode = 'lines', line = list(color = 'blue'), name = "Fourier1") %>%
+add_trace(y = Modelo_serie_diff_models$Fourier2DesempleoDiff, mode = 'lines', line = list(color = 'green'), name = "Fourier2") %>%
+add_trace(y = Modelo_serie_diff_models$DummyDesempleoDiff, mode = 'lines', line = list(color = 'purple'), name = "Dummy") %>%  
+  layout(title = 'Tasa de Desempleo sin tendencia (Diferencia Ordinaria, lag=1)',
+         xaxis = list(title = 'Mes', rangeslider = list(type = 'date')))
+```
+
+```{r}
+plot_ly(x = time(Dif_ord_PIB), y = Dif_ord_PIB, type = 'scatter', mode = 'lines', color = I("red"), name = "SerieDifOrd") %>%
+add_trace(y = Dif_ord_PIB-Modelo_serie_diff_models$Fourier1DesempleoDiff, mode = 'lines', line = list(color = 'blue'), name = "Fourier1") %>%
+add_trace(y = Dif_ord_PIB-Modelo_serie_diff_models$Fourier2DesempleoDiff, mode = 'lines', line = list(color = 'green'), name = "Fourier2") %>%
+add_trace(y = Dif_ord_PIB-Modelo_serie_diff_models$DummyDesempleoDiff, mode = 'lines', line = list(color = 'purple'), name = "Dummy") %>%  
+  layout(title = 'Tasa de Desempleo sin tendencia y estacionalidad (Diferencia Ordinaria, lag=1)',
+         xaxis = list(title = 'Mes', rangeslider = list(type = 'date')))
+```
+
 
 ## Suavizamiento Exponencial
 
@@ -285,6 +384,20 @@ t(Valoresretornados1$holdout)## Permiten verificar los verdaderos valores h-paso
 t(Valoresretornados1$mean) 
 apply((Valoresretornados1$holdout -Valoresretornados1$mean)^2,1,mean,na.rm=TRUE) ### Se calcula el error cuadrático medio de predicción
 ```
+
+Veamos si el error cuadrático medio haciendolo manualmente es igual a cuando utilizamos la función.
+
+```{r}
+apply((Valoresretornados1$holdout -Valoresretornados1$mean)^2,1,mean,na.rm=TRUE) == ECM
+```
+
+El error cuadrático medio de las predicciones un paso adelante tanto en el rolling manual como utilizando la función son iguales.
+
+## ARMA, ARIMA y SARIMA
+
+### 
+
+
 
 ```{r}
 #'c': Se ajusta una constante (serie estacionaria alrededor de una media constante).
@@ -370,7 +483,7 @@ lines(LQI,type="S",col="red")
 ```{r}
 #####Fase de Pronósticos
 #h la cantidad de periodos adelante que desea pronosticar
-pronosticos_PIB=forecast::forecast(modelo_ajustado,h=4,level=0.95)
+pronosticos_PIB=forecast::forecast(modelo_ajustado,h=1,level=0.95)
 plot(pronosticos_PIB)
 ```
 
@@ -412,7 +525,7 @@ ggplot(test_graf, aes(x = Tiempo)) +
        color = "Leyenda") + theme_minimal()
 ```
 
-## 11. Outliers
+## Outliers
 
 ```{r}
 coef=coefs2poly(modelo_ajustado)
@@ -451,7 +564,7 @@ outliers_3
 
 ```{r}
 ###Creación de las variable de intervención
-pasos_adel=4
+pasos_adel=1
 num_outliers=dim(xreg_final)[2]
 regresoras_aditivos=matrix(c(rep(0,pasos_adel*(num_outliers-6))),pasos_adel,num_outliers-6)
 regresoras_LS=matrix(c(rep(1,pasos_adel*(num_outliers-4))),pasos_adel,num_outliers-4)
@@ -463,3 +576,6 @@ pronostico_out=forecast(object=modelo_ajustado3,xreg=regresoras,h=pasos_adel)
 pronostico_out
 plot(pronostico_out)
 ```
+
+
+
