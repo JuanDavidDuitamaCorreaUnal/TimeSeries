@@ -445,16 +445,7 @@ Se divicen los datos en entrenamiento (80%) y prueba (20%).
 ```{r}
 ts_train_PIB <- window(PIB3TS,end = c(2020,1))
 ts_test_PIB <- window(PIB3TS, start=c(2020,2), end=c(2023,4))
-modelo_ajustado<-forecast::Arima(ts_train_PIB,order = c(0,1,4),lambda = LambdaPIB,include.constant = TRUE) ## ajustar según lo que digan las funciones de arriba
-summary(modelo_ajustado)
-coeftest(modelo_ajustado)
-```
-
-#### Eliminación de Parámetros no significativos
-
-```{r}
-modelo_ajustado<-forecast::Arima(ts_train_PIB,order = c(0,1,4), lambda = LambdaPIB,include.constant = TRUE, fixed = c(0,0,0,0,NA))  ## eliminar los parametros no significativos
-
+modelo_ajustado<-forecast::Arima(ts_train_PIB,order = c(0,1,0),lambda = LambdaPIB,include.constant = TRUE) ## ajustar según lo que digan las funciones de arriba
 summary(modelo_ajustado)
 coeftest(modelo_ajustado)
 ```
@@ -464,8 +455,7 @@ coeftest(modelo_ajustado)
 ```{r}
 residuales=modelo_ajustado$residuals
 plot(residuales)
-
-#plot(SDresiduales)
+hist(residuales,main = "Histograma de Residuales")
 acf(residuales,lag.max = 10)
 pacf(residuales)
 
@@ -492,7 +482,7 @@ cum=cumsum(res)/sd(res)
 N=length(res)
 cumq=cumsum(res^2)/sum(res^2)
 Af=0.948 ###Cuantil del 95% para la estadistica cusum (valor común usado)
-co=0.14013####Valor del cuantil aproximado para cusumsq para n/2 (valor común usado)
+co=0.14422####Valor del cuantil aproximado para cusumsq para n/2 (valor común usado)
 
 LS=Af*sqrt(N)+2*Af*c(1:length(res))/sqrt(N)
 LI=-LS
@@ -514,26 +504,23 @@ pronosticos_PIB=forecast::forecast(modelo_ajustado,h=1,level=0.95)
 plot(pronosticos_PIB)
 ```
 
-#### Rolling con datos ARIMA (0,1,4)
+#### Rolling con datos ARIMA (0,1,0)
 
 ```{r}
 h=1
 lserie=length(PIB3TS)
-ntrain=trunc(length(PIB3TS)*0.80+1)
+ntrain <- length(ts_train_PIB)
 ntrain
 time(PIB3TS)
 time(PIB3TS)[ntrain]###Me entrega la ultima fecha de la posicion ntrain
 train=window(PIB3TS,end=c(2020,1))
 test=window(PIB3TS,start=c(2020,2))
-length(train)
-ntest=length(test)
+ntest=length(ts_test_PIB)
 ntest
 fcmat=matrix(0,nrow=ntest,ncol=h)
-for(i in 1:ntest)
-{
-  x=window(PIB3TS,end=c(2020,2)+(i-1)/4)
-  print(length(x))
-  refit=forecast::Arima(x,order = c(0,1,4),lambda = LambdaPIB,include.constant = TRUE, fixed = c(0,0,0,0,NA))
+for(i in 1:ntest){
+  x=window(PIB3TS,end=c(2020,1+(i-1)))
+  refit=forecast::Arima(x,order = c(0,1,0),lambda = LambdaPIB,include.constant = TRUE)
   fcmat[i,]=test[i]-forecast(refit,h=h)$mean
 }
 fcmat
@@ -554,3 +541,7 @@ ggplot(test_graf, aes(x = Tiempo)) +
        color = "Leyenda") + theme_minimal()
 ```
 
+```{r}
+pronosticos_PIB=forecast::forecast(modelo_ajustado,h=12,level=0.95)
+plot(pronosticos_PIB)
+```
