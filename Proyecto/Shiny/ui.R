@@ -218,7 +218,14 @@ ui <- page_navbar(title="Series de tiempo univariadas 2024-1",
                                          nav_panel("CUSUM",plotOutput("CUSUM_SARIMA_definitivo_Desem")),
                                          nav_panel("CUSUMSQ",plotOutput("CUSUMSQ_SARIMA_definitivo_Desem"))
                                        )),
-                                       column(6,card(full_screen = T,card_header("Predicciones"),plotlyOutput("Rolling_definitivo_SARIMA_Desem")))
+                                       column(6,card(full_screen = F,card_header("Ajuste sobre entrenamiento"),div(style = "height: 300px; overflow-y: scroll;", verbatimTextOutput("SalidasTrainSarima_Desem")))),
+                                       column(6,card(full_screen = T,card_header("Predicciones"),plotlyOutput("Rolling_definitivo_SARIMA_Desem"))),
+                                       column(6,navset_card_tab(
+                                         full_screen = T,
+                                         title = "Modelo para predecir",
+                                         nav_panel("Ajuste en toda la serie",plotlyOutput("SARIMA_en_todo_Desem")),
+                                         nav_panel("2024",plotlyOutput("SupermegaResultados"))
+                                       ))
                                      )),#Fin nav_panel SARIMA
                            #:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
                            ## 1.7 Resumen con todos los MSE ------------------------------------------------------------
@@ -244,85 +251,93 @@ ui <- page_navbar(title="Series de tiempo univariadas 2024-1",
                          ## 2.1 Análisis descriptivo ------------------------------------------------------------
                          #::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
                          nav_panel(title="Análisis descriptivo",
-                                   layout_sidebar(
-                                     sidebar = sidebar(
-                                       selectInput(inputId = "AnioPIB_Desc",
-                                                   label = "Seleccione el año desde donde desea visualizar las series",
-                                                   choices = 2001:2023,
-                                                   selected = 2001,
-                                                   multiple = FALSE),
-                                       selectInput(inputId = "MesPIB_Desc",
-                                                   label = "Mes:",
-                                                   choices = c("Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"),
-                                                   selected = "Enero",
-                                                   multiple = FALSE),
-                                       width = 500,
-                                       open = TRUE,
-                                       fluid =T
-                                     ),
-                                     position = "left",
-                                     fillable = T,
-                                     fluidRow(
-                                       column(6,),
-                                       column(6,),
-                                       column(6,),
-                                       column(6,)
-                                     )
+                                   fluidRow(
+                                     column(12,card(full_screen = T,plotlyOutput("GraficaPIBx"))),
+                                     column(6,navset_card_tab(
+                                       full_screen = TRUE,
+                                       title = "Extracción de tendencia",
+                                       nav_panel("Diferencia Ordinaria",plotlyOutput("Tend_Diff_ord_PIB")),
+                                       nav_panel("Regresión lineal",plotlyOutput("Tend_Lineal_PIB")),
+                                       nav_panel("No paramétrico",plotlyOutput("Tend_No_Param_PIB")),
+                                       nav_panel("Promedio móvil",plotlyOutput("Tend_Prom_mov_PIB"))
+                                     )),
+                                     column(6,navset_card_tab(
+                                       full_screen = TRUE,
+                                       title = "Detección de estacionalidad",
+                                       nav_panel("Mapa de calor",plotlyOutput("Detec_Est_PIB_heatmap")),
+                                       nav_panel("Subseries mensuales",plotOutput("Detec_Est_PIB_subser")),
+                                       nav_panel("Boxplots",plotlyOutput("Detec_Est_PIB_boxplo"))
+                                     )),
+                                     column(6,card(full_screen = T,card_header("Gráfico de retardos"),plotOutput("Retardos_PIB"))),
+                                     column(6,card(full_screen = T,card_header("ACF"),plotOutput("ACF_PIB_residuosdescriptivo"))),
+                                     column(12,card(full_screen = T,card_header( "División entrenamiento y prueba"),plotlyOutput("Division_PIB")))
                                      
-                                   )),#Fin nav_panel Análisis descriptivo
+                                   )
+                                   ),#Fin nav_panel Análisis descriptivo
                          
                          #:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-                         ## 2.2 Aprendizaje automático ------------------------------------------------------------
+                         ## 2.3 Aprendizaje automático ------------------------------------------------------------
                          #::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
                          nav_panel(title = "Aprendizaje automático",
-                                   layout_sidebar(
-                                     position = "left",
-                                     fillable = F,
-                                     fluidRow(
-                                       column(6,),
-                                       column(6,),
-                                       column(6,),
-                                       column(6,)
-                                     )
-                                     
+                                   fluidRow(
+                                     column(6,card(full_screen = F,card_header("División"),plotlyOutput("Division_PIB2"))),
+                                     column(6,card(full_screen = F,card_header("Árboles"),img(src = "ArbolesPIB.png", height = "400px", width = "100%"))),
+                                     column(6,card(full_screen = F,card_header("Red Multicapa"),img(src = "MLPPIB.png", height = "400px", width = "100%"))),
+                                     column(6,card(full_screen = F,card_header("Red Recurrente"),img(src = "RNNPIB.png", height = "400px", width = "100%")))
                                    )
-                                   
-                         ),#Fin nav_panel Aprendizaje automático
-                         
+                                   ),
                          #:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-                         ## 2.3 Modelos estadísticos ------------------------------------------------------------
+                         ## 2.2 Suavizamiento exponencial ------------------------------------------------------------
                          #::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-                         nav_panel(title = "Modelos estadísticos",
-                                   layout_sidebar(
-                                     sidebar = sidebar(
-                                       selectInput(inputId = "AnioPIB_Mod",
-                                                   label = "Seleccione el año desde donde desea visualizar las series",
-                                                   choices = 2001:2023,
-                                                   selected = 2001,
-                                                   multiple = FALSE),
-                                       selectInput(inputId = "MesPIB_Mod",
-                                                   label = "Mes:",
-                                                   choices = c("Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"),
-                                                   selected = "Enero",
-                                                   multiple = FALSE),
-                                       width = 500,
-                                       open = TRUE,
-                                       fluid =T
-                                     ),
-                                     position = "left",
-                                     fillable = T,
-                                     fluidRow(
-                                       column(6,),
-                                       column(6,),
-                                       column(6,),
-                                       column(6,)
-                                     )
-                                     
+                         nav_panel(title = "Suavizamiento exponencial",
+                                   card(full_screen = T,
+                                        card_header("Suavizamiento Exponencial",
+                                                    plotlyOutput("TestSuavExp_PIB")))
+                                   
+                                   
+                         ),#Fin nav_panel Suavizamiento exponencial
+                         #:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+                         ## 2.4 ARIMA ------------------------------------------------------------
+                         #::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+                         nav_panel(title = "ARIMA",
+                                   fluidRow(
+                                   column(6,navset_card_tab(
+                                     full_screen = T,
+                                     title = "Diferenciación",
+                                     nav_panel("Raíz unitaria",div(style = "height: 300px; overflow-y: scroll;", verbatimTextOutput("PrimerostestsPIB"))),
+                                     nav_panel("ACF",plotOutput("PrimerACFPIB")),
+                                     nav_panel("PACF",plotOutput("PrimerPACFPIB")),
+                                   )),
+                                   column(6,navset_card_tab(
+                                     full_screen = T,
+                                     title = "Ajuste",
+                                     nav_panel("Estimación",div(style = "height: 300px; overflow-y: scroll;", verbatimTextOutput("AjustesarimaPIB"))),
+                                     nav_panel("Residuos",plotOutput("ResiduosPIBxd")),
+                                     nav_panel("ACF",plotOutput("ACF_Residuos_PIBxd")),
+                                     nav_panel("Histograma",plotOutput("Histograma_Resid_pib")),
+                                     nav_panel("PACF",plotOutput("PACF_Residuos_PIBxd")),
+                                     nav_panel("Tests",div(style = "height: 300px; overflow-y: scroll;", verbatimTextOutput("Tests_sobre_residuos"))),
+                                     nav_panel("Monthplot",plotOutput("Monthplot_PIBdifer")),
+                                     nav_panel("CUSUM",plotOutput("CUSUM_PIB_xd")),
+                                     nav_panel("CUSUMSQ",plotOutput("CUSUMSQ_PIB_xd"))
+                                   )),
+                                   column(6,card(full_screen = T,card_header("Predicciones",plotOutput("Rolling_PIB_super"))))
                                    )
-                         )#Fin nav_panel Modelos estadísticos
-                         
-                )
+                                   ),#Fin nav_panel ARIMA
+                         #:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+                         ## 1.7 Resumen con todos los MSE ------------------------------------------------------------
+                         #::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+                         nav_panel(title = "Resumen MSE",
+                                   fluidPage(
+                                     tags$style(type = "text/css", "
+    #model_table {
+      height: 100vh;   /* Altura total de la ventana */
+      overflow-y: auto; /* Habilitar scroll vertical si es necesario */
+    }
+  "),
+                                     DTOutput("model_table2")
+                                   ))
                   
 
-                  
+                )
                   )#Fin del UI

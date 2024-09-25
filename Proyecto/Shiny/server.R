@@ -275,7 +275,7 @@ server <- function(input,output,session){
   })
 
   output[["ARIMA_Diferenciada_Desem"]]<-renderPlotly({
-    plot_ly(x = seq.Date(from=as.Date("2001-01-01"),to=as.Date("2023-12-01"),by="month"), y = DiferenciaOrd, type = 'scatter', mode = 'lines', color = I("red3"), name = "Serie") %>%
+    plot_ly(x = seq.Date(from=as.Date("2001-02-01"),to=as.Date("2023-12-01"),by="month"), y = DiferenciaOrd, type = 'scatter', mode = 'lines', color = I("red3"), name = "Serie") %>%
       layout(title = 'Serie con Diferencia ordinaria',
              xaxis = list(title = 'Mes'))
   })
@@ -305,7 +305,7 @@ server <- function(input,output,session){
     cat("Ajuste modelo ARIMA(15,1,1):\n ")
     print(summary(AjusteArima151))
     print(coeftest(AjusteArima151))
-    cat("Refinamiento requerido:")
+    #cat("Refinamiento requerido:")
   })
   
   output[["Residuos_ARIMA_Desem"]]<-renderPlotly({
@@ -349,8 +349,9 @@ server <- function(input,output,session){
 
 ## 5. SARIMA ---------------------------------------------------------------
   output[["Serie_inicial_SARIMA"]]<-renderPlotly({
-    plot_ly( x = Desempleo$AnioMes, y = Desempleo$TasaDesempleo, type = 'scatter', mode = 'lines',color=I("red3")) %>%
-      layout(title = 'Tasa de Desempleo mensual en Colombia',
+    plot_ly(x = seq.Date(from=as.Date("2001-01-01"),to=as.Date("2019-05-01"),by="month"), y = Train, type = 'scatter', mode = 'lines', color = I("red3"), name = "Entrenamiento") %>%
+      add_trace(x =seq.Date(from=as.Date("2019-06-01"),to=as.Date("2023-12-01"),by="month"),y = Test, mode = 'lines', line = list(color = 'blue'), name = "Prueba") %>%
+      layout(title = 'División entrenamiento y prueba',
              xaxis = list(title = 'Mes'))
   })
   
@@ -432,7 +433,7 @@ server <- function(input,output,session){
   
   output[["Segund_Residuos_SARIMA_Desem"]]<-renderPlotly({
     plot_ly(x = time(residuales_propios), y = residuales_propios, type = 'scatter', mode = 'lines', color = I("red3"), name = "Residuos") %>%
-      layout(title = 'Residuales SARIMA(2,1,1)(2,1,1)_12',
+      layout(title = 'Residuales SARIMA(1,1,2)(2,1,1)_12',
              xaxis = list(title = 'Mes'))
   })
   
@@ -466,14 +467,40 @@ server <- function(input,output,session){
     lines(LQI4,type="S",col="red")
   })
   
+  output[["SalidasTrainSarima_Desem"]]<-renderPrint({
+    cat("Outliers:\n")
+    print(outliersSAR)
+    cat("Estimaciones:\n")
+    print(SARIMAtrain_out)
+  })
+  
   output[["Rolling_definitivo_SARIMA_Desem"]]<-renderPlotly({
     plot_ly(x = time(test), y = test, type = 'scatter', mode = 'lines', color = I("red"), name = "TasaDesempleo") %>%
-      add_trace(y = fc, mode = 'lines', line = list(color = 'blue'), name = "Predicciones") %>%
+      add_trace(y = fcx, mode = 'lines', line = list(color = 'blue'), name = "Predicciones") %>%
+      layout(title = 'Tasa de Desempleo vs Predicciones (Junio 2019-Diciembre 2023)',
+             xaxis = list(title = 'Mes', rangeslider = list(type = 'date')))
+  })
+  
+  output[["SARIMA_en_todo_Desem"]]<-renderPlotly({
+    plot_ly(x = time(DesempleoTS), y = DesempleoTS, type = 'scatter', mode = 'lines', color = I("red"), name = "TasaDesempleo") %>%
+      add_trace(y = SARIMA_out$fitted, mode = 'lines', line = list(color = 'blue'), name = "Predicciones") %>%
       layout(title = 'Tasa de Desempleo vs Predicciones (Junio 2019-Diciembre 2023)',
              xaxis = list(title = 'Mes'))
   })
   
-  #Resumen de MSE
+  output[["SupermegaResultados"]]<-renderPlotly({
+    plot_ly(x = time(testsuperxd), y = testsuperxd, type = 'scatter', mode = 'lines', color = I("red"), name = "TasaDesempleo") %>%
+      add_trace(y = fcsuperxd, mode = 'lines', line = list(color = 'blue'), name = "Predicciones") %>%
+      layout(title = 'Tasa de Desempleo vs Predicciones (Enero 2024-Julio 2024)',
+             xaxis = list(title = 'Mes'))
+    
+  })
+  
+  
+
+## 6. Resumen MSE -------------------------------------------------------------
+
+  
   
   
     # Mostrar la tabla proporcionada
@@ -485,6 +512,204 @@ server <- function(input,output,session){
         scrollX = TRUE      # Habilitar scroll horizontal si es necesario
       ))
     })
+    
+
+# PIB ---------------------------------------------------------------------
+
+
+## 1. Análisis descriptivo ----------------------------------------------------
+
+    
+    output[["GraficaPIBx"]]<-renderPlotly({
+      plot_ly( x = PIB3$Fecha, y = PIB3$PIBtrimestral, type = 'scatter', mode = 'lines',color=I("red3")) %>%
+        layout(title = 'PIB Trimestral en Colombia',
+               xaxis = list(title = 'Trimestre'))
+    })
+    
+
+### 1.1 Extracción de tendencia ---------------------------------------------
+
+    
+    
+    
+    #Regresión lineal
+    output[["Tend_Lineal_PIB"]]<-renderPlotly({
+      PIB3NoLM=PIB3TS-predict(fitLMPIB)#Eliminando la tendencia
+      plot_ly( x = time(PIB3NoLM), y = PIB3NoLM, type = 'scatter', mode = 'lines',color=I("red")) %>%
+        layout(title = 'PIB trimestral en Colombia con tendencia lineal extraída',
+               xaxis = list(title = 'Trimestre'))
+    })
+    
+    #No paramétrica
+    output[["Tend_No_Param_PIB"]]<-renderPlotly({
+      STLextra_PIB<-PIB3TS-smooth_vec(PIB3TS,span = 0.2, degree = 2)
+      plot_ly(x = time(STLextra_PIB), y = STLextra_PIB, type = 'scatter', mode = 'lines',color=I("red")) %>%
+        layout(title = 'PIB Trimestral en Colombia con tendencia STL extraída',
+               xaxis = list(title = 'Trimestre'))
+    })
+    
+    #Diferencia ordinaria
+    output[["Tend_Diff_ord_PIB"]]<-renderPlotly({
+      plot_ly(x = time(Dif_ord_PIB), y = Dif_ord_PIB, type = 'scatter', mode = 'lines',color=I("red")) %>%
+        layout(title = 'PIB sin tendencia(Diferencia Ordinaria, lag=1)',
+               xaxis = list(title = 'Trimestre'))
+    })
+    
+    #Promedio móvil
+    output[["Tend_Prom_mov_PIB"]]<-renderPlotly({
+      PIBcomProm <- decompose(PIB3TS)
+      plot(PIBcomProm)
+      ExtraProm=PIB3TS-PIBcomProm$trend
+      plot_ly( x = time(ExtraProm), y = ExtraProm, type = 'scatter', mode = 'lines',color=I("red")) %>%
+        layout(title = 'PIB con tendencia extraída (Promedio móvil)',
+               xaxis = list(title = 'Trimestre'))
+    })
+    
+
+### 1.2 Gráfico de retardos -----------------------------------------------------
+    
+
+    output[["Retardos_PIB"]]<-renderPlot({
+      par(mar = c(3,2,3,2))
+      lag1.plot(Dif_ord_PIB, 4,corr=T)
+    })
+    
+    output[["ACF_PIB_residuosdescriptivo"]]<-renderPlot({
+      acf(Dif_ord_PIB)
+    })
+    
+    
+### 1.3 Detección de estacionalidad ------------------
+    
+    #Mapa de calor
+    output[["Detec_Est_PIB_heatmap"]]<-renderPlotly({
+      TSstudio::ts_heatmap(diff(PIB3TS),title = "Mapa de Calor - PIB trimestral en Colombia(Diferencia Ordinaria)")
+    })
+    #Subseries
+    output[["Detec_Est_PIB_subser"]]<-renderPlot({
+      monthplot(diff(PIB3TS),main="Subseries(Diferencia Ordinaria)")
+    })
+    
+    #Boxplots
+    output[["Detec_Est_PIB_boxplo"]]<-renderPlotly({
+      tsibblePIB<-as_tsibble(PIB3TS)
+      tsibblePIB <- tsibblePIB %>%
+        mutate(index = as.Date(index))
+      tsibblePIB<-tsibblePIB%>%mutate(Diferencia=value-lag(value))
+      ggplotly( tsibblePIB %>%
+                  na.omit() %>%
+                  plot_seasonal_diagnostics(.date_var = index, .value = Diferencia, .feature_set = c("month.lbl"), .geom = "boxplot"))
+    })
+    
+    output[["Division_PIB"]]<-renderPlotly({
+      plot_ly(x = seq.Date(from=as.Date("2005-03-01"),to=as.Date("2020-04-01"),by="quarter"), y = ts_train_PIB, type = 'scatter', mode = 'lines', color = I("red3"), name = "Entrenamiento") %>%
+        add_trace(x =seq.Date(from=as.Date("2020-05-01"),to=as.Date("2023-12-01"),by="quarter"),y = ts_test_PIB, mode = 'lines', line = list(color = 'blue'), name = "Prueba") %>%
+        layout(title = 'División entrenamiento y prueba',
+               xaxis = list(title = 'Mes'))
+    })
+    output[["Division_PIB2"]]<-renderPlotly({
+      plot_ly(x = seq.Date(from=as.Date("2005-03-01"),to=as.Date("2020-04-01"),by="quarter"), y = ts_train_PIB, type = 'scatter', mode = 'lines', color = I("red3"), name = "Entrenamiento") %>%
+        add_trace(x =seq.Date(from=as.Date("2020-05-01"),to=as.Date("2023-12-01"),by="quarter"),y = ts_test_PIB, mode = 'lines', line = list(color = 'blue'), name = "Prueba") %>%
+        layout(title = 'División entrenamiento y prueba',
+               xaxis = list(title = 'Mes'))
+    })
+
+
+## 2. Suavizamiento exponencial --------------------------------------------
+    
+    #Gráfico de las predicciones
+    output[["TestSuavExp_PIB"]]<-renderPlotly({
+      plot_ly(x = time(test2), y = test2, type = 'scatter', mode = 'lines', color = I("red"), name = "PIB") %>%   
+        add_trace(y = fchstepahe2, mode = 'lines', line = list(color = 'blue'), name = "Predicciones") %>%   
+        layout(title = 'PIB vs Predicciones (Abril 2020-Diciembre 2023)',          xaxis = list(title = 'Trimestre', rangeslider = list(type = 'date')))
+    })
   
 
+## 3. ARIMA ----------------------------------------------------------------
+
+    
+    output[["PrimerostestsPIB"]]<-renderPrint({
+      cat("Verificaión presencia de raíz unitaria:\n")
+      print(ar(PIB3TS))
+      print(fUnitRoots::adfTest(PIB3TS,lags = 4,type='nc'))
+      print(fUnitRoots::adfTest(diff_PIB,lags = 4,type='nc'))
+    })
+    
+    output[["PrimerACFPIB"]]<-renderPlot({
+      acf(diff_PIB,lag.max = 10, ci.type='ma')# q=0,1, Q=0,1
+    })
+    output[["PrimerPACFPIB"]]<-renderPlot({
+      pacf(diff_PIB,lag.max = 10)
+    })
+    
+    output[["AjustesarimaPIB"]]<-renderPrint({
+      cat("Ajuste:\n")
+      print(summary(modelo_ajustado))
+      print(coeftest(modelo_ajustado))
+    })
+    
+    output[["ResiduosPIBxd"]]<-renderPlot({
+      plot(residualesPIB)  
+    })
+    
+    output[["Histograma_Resid_pib"]]<-renderPlot({
+      hist(residualesPIB,main = "Histograma de Residuales")
+    })
+    
+    output[["ACF_Residuos_PIBxd"]]<-renderPlot({
+      acf(residualesPIB,lag.max = 10)  
+    })
+    
+    output[["PACF_Residuos_PIBxd"]]<-renderPlot({
+      pacf(residualesPIB)
+    })
+    
+    
+    output[["Tests_sobre_residuos"]]<-renderPrint({
+      cat("Normalidad:\n")
+      print(jarque.bera.test(residualesPIB))
+      cat("Autocorrelación:\n")
+      print(Box.test(residualesPIB, lag = ceiling(sqrt(length(residualesPIB))) , type = "Ljung-Box", fitdf = 1))
+    })
+    
+    output[["Monthplot_PIBdifer"]]<-renderPlot({
+      monthplot(residualesPIB)  
+    })
+    
+    output[["CUSUM_PIB_xd"]]<-renderPlot({
+     plot(cumPIB,type="l",ylim=c(min(LIPIB),max(LSPIB)),xlab="t",ylab="",main="CUSUM")
+      lines(LSPIB,type="S",col="red")
+      lines(LIPIB,type="S",col="red") 
+    })
+    
+    output[["CUSUMSQ_PIB_xd"]]<-renderPlot({
+      #CUSUMSQ
+        plot(cumqPIB,type="l",xlab="t",ylab="",main="CUSUMSQ")                      
+        lines(LQSPIB,type="S",col="red")                    
+        lines(LQIPIB,type="S",col="red")
+    })
+    
+    output[["Rolling_PIB_super"]]<-renderPlot({
+      ggplot(test_graf, aes(x = Tiempo)) +
+        geom_line(aes(y = Valor_real, color = "Serie Real"), size = 1) +
+        geom_line(aes(y = Valor_prono, color = "Pronóstico"), linetype = "dashed", size = 1) +
+        scale_color_manual(values = c("Serie Real" = "blue", "Pronóstico" = "red")) +
+        labs(title = "Comparación de la Serie de Tiempo Real y el Pronóstico",
+             x = "Tiempo",
+             y = "Valor",
+             color = "Leyenda") + theme_minimal()
+    })
+    
+
+## 4. Resumen MSE --------------------------------------------------------------
+    output[["model_table2"]] <- renderDT({
+      datatable(MSE_PIB, options = list(
+        scrollY = "100vh",  # Ajustar la altura de la tabla al tamaño de la ventana
+        paging = FALSE,     # Deshabilitar paginación
+        searching = FALSE,  # Deshabilitar la búsqueda
+        scrollX = TRUE      # Habilitar scroll horizontal si es necesario
+      ))
+    })
+    
+    
 }

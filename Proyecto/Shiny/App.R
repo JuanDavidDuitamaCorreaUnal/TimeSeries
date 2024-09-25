@@ -56,11 +56,14 @@ library(fpp)
 library(here)
 library(DT)
 
-Ruta<-setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
-#Ruta<- here::here()
-#Ruta<-"D:/Estadística/Semestres/Semestre 9/Series de Tiempo Univariadas/Shiny"
-setwd(Ruta)
 
+#Ruta<-setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+#Ruta<- here::here()
+Ruta<-"D:/Estadística/Semestres/Semestre 9/Series de Tiempo Univariadas/Shiny"
+setwd(Ruta)
+CorrerTodo<-F
+
+if(CorrerTodo){
 
 # Desempleo ---------------------------------------------------------------
 
@@ -191,8 +194,45 @@ LQS3=co3+(1:length(resSARIMA))/N3
 LQI3=-co3+(1:length(resSARIMA))/N3
 
 
+#SARIMA (1,1,2)(2,1,1) en el conjunto de entrenamiento
 
-#SARIMA definitivo con outliers
+trainSAR = window(DesempleoTS,end=time(DesempleoTS)[ntrain])
+testSAR = window(DesempleoTS,start=time(DesempleoTS)[ntrain]+1/12)
+
+SARIMAtrain = Arima(trainSAR, c(1, 1, 2),seasonal = list(order = c(2, 1, 1), period = 12),lambda = 1)
+resSARIMAtrain <- SARIMAtrain$residuals
+coeftrainSAR=coefs2poly(SARIMAtrain)
+outliersSAR= tsoutliers::locate.outliers(resSARIMAtrain,coeftrainSAR)
+outliersSAR###tstat se compara con C=3
+xregtrainSAR = outliers.effects(outliersSAR, ntrain)
+
+SARIMAtrain_out = update(SARIMAtrain, xreg = xregtrainSAR)
+
+#Rolling
+#SARIMAtrain_out
+#refit <- Arima(DesempleoTS, model=fitmodelo)
+#fc <- window(fitted(SARIMA_out), start=c(2019,6))
+
+esta_param_modelo<-coef(SARIMAtrain_out)
+h <- 1
+nx <- length(test) - h + 1
+xregtestSAR = cbind(matrix(0,nx,2),matrix(1,nx,4),matrix(0,nx,1))
+xregro <- rbind(xregtrainSAR,xregtestSAR)
+fitmodelox <- update(SARIMAtrain_out,fixed=esta_param_modelo)
+fcx <- ts(numeric(nx), start=c(2019,6), freq=12)
+for(i in 1:nx){ 
+  x <- window(DesempleoTS, end=c(2019, 5+(i-1)))
+  refit <- forecast::Arima(x, model=fitmodelox, xreg = xregro[1:(221+(i-1)),])
+  fcx[i] <- forecast::forecast(refit, h=h,xreg = t(as.matrix(xregro[(221+i),])))$mean[h]
+}
+difex=(test-fcx)^2
+ecm=(1/(length(test)))*sum(difex)
+ecm
+
+
+
+
+#SARIMA definitivo con outliers en todo el conjunto de datos
 
 modeloSARIMAdef = Arima(DesempleoTS, c(1, 1, 2),seasonal = list(order = c(2, 1, 1), period = 12),lambda = 1)
 resSARIMAdef <- modeloSARIMAdef$residuals
@@ -242,13 +282,47 @@ for(i in 1:n)
 }
 dife=(test-fc)^2
 ecm=(1/(length(test)))*sum(dife)
+
+#Precciones de 2024
+newdata <- read_excel("D:/Estadística/Semestres/Semestre 9/Series de Tiempo Univariadas/Datos/anex-GEIH-jul2024.xlsx", sheet = "Total nacional", range = "JR17:JX17",col_names = F)
+newdata <- as.data.frame(t(newdata[1,]))
+newdataTS <- ts((newdata), start = c(2024, 1), end = c(2024, 7), frequency = 12)
+
+SARIMA_out
+#refit <- Arima(DesempleoTS, model=fitmodelo)
+#fc <- window(fitted(SARIMA_out), start=c(2019,6))
+
+esta_param_modelosipo<-coef(SARIMA_out)
+h <- 1
+trainsuperxd = DesempleoTS
+testsuperxd = newdataTS
+nnu <- length(testsuperxd) - h + 1
+fitmodelonu <- update(SARIMA_out,fixed=esta_param_modelosipo)
+fcsuperxd <- ts(numeric(nnu), start=c(2024,1), freq=12)
+xregtempx = cbind(matrix(0,nnu,5),matrix(1,nnu,4),matrix(0,nnu,2))
+xregnew <- rbind(xreg,xregtempx)
+
+DesempTSnew <- ts(c(DesempleoTS, newdataTS), start = start(DesempleoTS), frequency = 12)
+
+for(i in 1:nnu){ 
+  x <- window(DesempTSnew, end=c(2023, 12+(i-1)))
+  refitnu <- forecast::Arima(x, model=fitmodelonu, xreg = xregnew[1:(276+(i-1)),])
+  fcsuperxd[i] <- forecast::forecast(refitnu, h=h,xreg = t(as.matrix(xregnew[277,])))$mean[h]
+}
+difenu=(testsuperxd-fcsuperxd)^2
+ecmhola=(1/(length(testsuperxd)))*sum(difenu)
+ecmhola
+
+
+
+
 #ecm
 
 
 
 MSE_Desempleo <- data.frame(
   Modelo = c("SARIMA", "Suavizamiento exponencial", "Árboles", "Red multicapa", "Red GRU"),
-  MSE = c(0.32, 3.75, 10.74, 6.55, 12.44)
+  MSE = c(6.731634, 3.75, 10.74, 6.55, 12.44)
 )
 
 
@@ -258,9 +332,125 @@ MSE_Desempleo <- data.frame(
 PIB3 <- read_excel(paste0(Ruta,"/Datos/PIB.xlsx"), range = "AS18:AS93", col_names = FALSE)
 PIB3 <- data.frame('Fecha'=seq.Date(from=as.Date("2005-03-01"),to=as.Date("2023-12-01"),by="quarter"),'PIBtrimestral'=PIB3$...1)
 #Objeto ts
-PIB3TS <- ts(PIB3, start = c(2005, 1), end = c(2023, 4), frequency = 4)
+PIB3TS <- ts(PIB3$PIBtrimestral, start = c(2005, 1), end = c(2023, 4), frequency = 4)
+LambdaPIB<-BoxCox.lambda(PIB3TS, method ="loglik", lower = -3, upper = 3)
+
+Dif_ord_PIB<-diff(PIB3TS)
+fitLMPIB <- lm(PIB3TS~time(PIB3TS), na.action=NULL)
 
 
+## Suavizamiento Exponencial -----------------------------------------------
+
+
+h2=1  
+lserie2=length(PIB3TS) 
+ntrain2=trunc(length(PIB3TS)*0.80)+1 ##% del datos en el conjunto de entrenamiento es del 80%. 
+ntrain 
+time(PIB3TS) 
+time(PIB3TS)[ntrain2]###Me entrega la ultima fecha de la posición ntrain #Partiendo la serie en entrenamiento y test 
+train2=window(PIB3TS,end=time(PIB3TS)[ntrain2]) 
+test2=window(PIB3TS,start=time(PIB3TS)[ntrain2]+1/4) ##1/4 porque es la fracción que corresponde a un trimestre 
+ntest2=length(test2) 
+fchstepahe2=matrix(0,nrow=ntest2,ncol=h2) ##Crea una Columna para los h-pasos adelante ### verval contiene los verdaderos valores de la serie en el conjunto de prueba con los que se compararán los pronósticos. 
+verval2=cbind(test2[1:ntest2]) # Predicción un paso adelante
+####Ajuste del modelo con los datos de entrenamiento 
+HWAP_train2=stats::HoltWinters(train2,gamma = 0) 
+HWAP_train2$alpha 
+HWAP_train2$beta ###Observación: Note que que esos son las estimaciones de los parámetros de suavizamiento. Se puede también hacer una grilla de valores para explorar si hay unos valores mejores. # por ejemplo como sigue: 
+require(utils) 
+suav_inputs=cbind(seq(0.001,0.999,0.1),seq(0.001,0.999,0.1)) 
+colnames(suav_inputs)<-c("alpha","beta") 
+suav_inputs_tbl=tibble::as_tibble(suav_inputs) 
+grilla_suav=expand.grid(alpha=suav_inputs_tbl$alpha,beta=suav_inputs_tbl$beta) ##Grilla de Valores 
+####Se crean las ventanas de rolling y se obtiene los h-pronósticos para cada ventana(hay ntest posibles ventanas) 
+for(i in 1:(ntest2)){x=window(PIB3TS,end=time(PIB3TS)[ntrain2]+(i-1)/4)   
+refit2=stats::HoltWinters(x,gamma=0,alpha=HWAP_train2$alpha,bet=HWAP_train2$beta)     
+fchstepahe2[i,]=as.numeric(forecast::forecast(refit2,h=h2)$mean) } 
+errores_pred2=verval2 -fchstepahe2 ##Observación: debo devolver los pronósticos y los verdaderos valores a la escala original si es necesario. 
+ECM=apply(errores_pred2^2,MARGIN = 2,mean,na.rm=TRUE) ##Acá se computa la medida de precisión del pronóstico(en este caso ECM). 
+RECM=sqrt(ECM) ##Se le saca raíz  
+#RECM ##se lee: Primera fila RECM 1-paso adelante y así sucesivamente. 
+ECM
+
+
+diff_PIB <- diff(PIB3TS)
+
+
+ # p=0,1,2,...,9,10 P=0,1
+#En resumen podríamos proponer max q=1, Q=1, p=10, P=1
+#Cuando se diferencia 2 veces o más, en este caso dos ordinarias y una estacional, el drift se debería ignorar
+
+diff_PIB_train <- window(diff_PIB,end = c(2020,1))
+diff_PIB_test <- window(diff_PIB, start=c(2020,2), end=c(2023,4))
+
+
+## ARIMA -------------------------------------------------------------------
+
+
+
+# tictoc::tic()
+# modelo_automatico<-auto.arima(diff_PIB_train,d=1,D=0,max.p=0,max.q=4,max.P=4,max.Q=4,start.p=0, start.q=0,seasonal=FALSE,max.order=10,stationary=TRUE,ic="aic",stepwise=FALSE,allowmean = TRUE)
+# modelo_automatico
+# tictoc::toc()
+
+
+ts_train_PIB <- window(PIB3TS,end = c(2020,1))
+ts_test_PIB <- window(PIB3TS, start=c(2020,2), end=c(2023,4))
+modelo_ajustado<-forecast::Arima(ts_train_PIB,order = c(0,1,0),lambda = LambdaPIB,include.constant = TRUE) ## ajustar según lo que digan las funciones de arriba
+# summary(modelo_ajustado)
+# coeftest(modelo_ajustado)
+
+#Refinamiento
+
+#modelo_ajustado<-forecast::Arima(ts_train_PIB,order = c(0,1,4), lambda = LambdaPIB,include.constant = TRUE, fixed = c(0,0,0,0,NA))  ## eliminar los parametros no significativos
+
+# summary(modelo_ajustado)
+# coeftest(modelo_ajustado)
+
+#Residuales
+residualesPIB=modelo_ajustado$residuals
+
+
+
+###Estadisticas CUSUM
+resPIB=residualesPIB
+cumPIB=cumsum(resPIB)/sd(resPIB)
+NPIB=length(resPIB)
+cumqPIB=cumsum(resPIB^2)/sum(resPIB^2)
+AfPIB=0.948 ###Cuantil del 95% para la estadistica cusum (valor común usado)
+coPIB=0.14422####Valor del cuantil aproximado para cusumsq para n/2 (valor común usado)
+
+LSPIB=AfPIB*sqrt(NPIB)+2*AfPIB*c(1:length(resPIB))/sqrt(NPIB)
+LIPIB=-LSPIB
+LQSPIB=coPIB+(1:length(resPIB))/NPIB
+LQIPIB=-coPIB+(1:length(resPIB))/NPIB
+
+
+#Rolling
+
+h=1
+lseriexd=length(PIB3TS)
+ntrainxd=length(ts_train_PIB)
+trainxd=window(PIB3TS,end=c(2020,1))
+testxd=window(PIB3TS,start=c(2020,2))
+ntestXD=length(ts_test_PIB)
+fcmatxd=matrix(0,nrow=ntestXD,ncol=h)
+for(i in 1:ntestXD){
+  x=window(PIB3TS,end=c(2020,1+(i-1)))
+  refitxd=forecast::Arima(x,order = c(0,1,0),lambda = LambdaPIB,include.constant = TRUE)
+  fcmatxd[i,]=testxd[i]-forecast::forecast(refitxd,h=h)$mean
+}
+
+test_graf <- data.frame(Tiempo = time(testxd),Valor_real = as.numeric(testxd),Valor_prono = as.numeric(testxd) - as.vector(fcmatxd))
+
+
+MSE_PIB <- data.frame(
+  Modelo = c("ARIMA", "Suavizamiento exponencial", "Árboles", "Red multicapa", "Red GRU"),
+  MSE = c(147264114, 147644997, 6141964443, 227726100, 15228127492)
+)
+}else{
+  load("D:/Estadística/Semestres/Semestre 9/Series de Tiempo Univariadas/Shiny/CargarObjetos.RData")
+}
 
 source(paste0(Ruta,"/ui.R"))
 source(paste0(Ruta,"/server.R"))
